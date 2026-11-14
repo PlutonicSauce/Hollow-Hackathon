@@ -3,7 +3,9 @@
 from .models import (
     AssetKind,
     AssetSnapshot,
+    BaselineComparison,
     BufferSpec,
+    CommunityServiceCoverage,
     Demand,
     DemandMetric,
     DependencyGroup,
@@ -11,6 +13,11 @@ from .models import (
     InfrastructureAsset,
     Intervention,
     InterventionResource,
+    ObjectiveValue,
+    OptimizationPolicy,
+    OptimizationResult,
+    PlanSummary,
+    PolicyName,
     Scenario,
     ServiceType,
     SimulationResult,
@@ -18,11 +25,14 @@ from .models import (
     TravelTime,
 )
 from .simulation import simulate
+from .optimizer import OptimizationLimitError, optimize_interventions
 
 __all__ = [
     "AssetKind",
     "AssetSnapshot",
+    "BaselineComparison",
     "BufferSpec",
+    "CommunityServiceCoverage",
     "Demand",
     "DemandMetric",
     "DependencyGroup",
@@ -30,10 +40,17 @@ __all__ = [
     "InfrastructureAsset",
     "Intervention",
     "InterventionResource",
+    "ObjectiveValue",
+    "OptimizationPolicy",
+    "OptimizationResult",
+    "OptimizationLimitError",
+    "PlanSummary",
+    "PolicyName",
     "Scenario",
     "ServiceType",
     "SimulationResult",
     "TimeStep",
     "TravelTime",
+    "optimize_interventions",
     "simulate",
 ]

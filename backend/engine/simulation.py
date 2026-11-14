@@ -31,14 +31,19 @@ def simulate(scenario: Scenario) -> SimulationResult:
             item for item in scenario.resources if item.id == intervention.resource_id
         )
         travel_minutes = next(
-            route.minutes
+            route.travel_minutes
+            for route in resource.travel_times
+            if route.asset_id == intervention.target_asset_id
+        )
+        setup_minutes = next(
+            route.setup_minutes
             for route in resource.travel_times
             if route.asset_id == intervention.target_asset_id
         )
         active_from = (
             intervention.dispatch_minute
             + travel_minutes
-            + intervention.setup_minutes
+            + setup_minutes
         )
         active_until = (
             scenario.horizon_minutes

@@ -114,7 +114,7 @@ class ContractValidationTests(unittest.TestCase):
             id="water-tanker",
             name="Water tanker",
             capabilities=(ServiceType.WATER,),
-            travel_times=(TravelTime(asset_id="scrubber", minutes=0),),
+            travel_times=(TravelTime(asset_id="scrubber", travel_minutes=0),),
         )
         intervention = Intervention(
             id="wrong-resource",
@@ -132,6 +132,43 @@ class ContractValidationTests(unittest.TestCase):
                 faults=scenario.faults,
                 resources=(resource,),
                 interventions=(intervention,),
+            )
+
+    def test_multiple_interventions_cannot_target_the_same_dependency_group(self) -> None:
+        scenario = hand_calculated_scenario()
+        resources = (
+            InterventionResource(
+                id="generator-a",
+                name="Generator A",
+                capabilities=(ServiceType.POWER,),
+                travel_times=(TravelTime(asset_id="scrubber", travel_minutes=0),),
+            ),
+            InterventionResource(
+                id="generator-b",
+                name="Generator B",
+                capabilities=(ServiceType.POWER,),
+                travel_times=(TravelTime(asset_id="scrubber", travel_minutes=0),),
+            ),
+        )
+        interventions = tuple(
+            Intervention(
+                id=f"assignment-{resource.id}",
+                resource_id=resource.id,
+                target_asset_id="scrubber",
+                dependency_group_id="scrubber-power",
+                dispatch_minute=0,
+            )
+            for resource in resources
+        )
+        with self.assertRaisesRegex(ValidationError, "multiple interventions"):
+            Scenario(
+                id="duplicate-target",
+                horizon_minutes=scenario.horizon_minutes,
+                assets=scenario.assets,
+                demands=scenario.demands,
+                faults=scenario.faults,
+                resources=resources,
+                interventions=interventions,
             )
 
     def test_invalid_buffer_range_is_rejected(self) -> None:

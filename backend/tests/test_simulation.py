@@ -9,6 +9,7 @@ from engine.models import (
     TravelTime,
 )
 from engine.scenarios import hand_calculated_scenario
+from engine.scenarios import signature_scenario
 from engine.simulation import simulate
 
 
@@ -89,7 +90,7 @@ class DeterministicSimulationTests(unittest.TestCase):
             id="portable-generator",
             name="Portable generator",
             capabilities=(ServiceType.POWER,),
-            travel_times=(TravelTime(asset_id="scrubber", minutes=0),),
+            travel_times=(TravelTime(asset_id="scrubber", travel_minutes=0),),
         )
         intervention = Intervention(
             id="generator-to-scrubber",
@@ -97,7 +98,6 @@ class DeterministicSimulationTests(unittest.TestCase):
             target_asset_id="scrubber",
             dependency_group_id="scrubber-power",
             dispatch_minute=0,
-            setup_minutes=0,
         )
         with_backup = Scenario(
             id="with-backup",
@@ -119,13 +119,95 @@ class DeterministicSimulationTests(unittest.TestCase):
             ).service_available
         )
 
+    def test_travel_and_setup_delay_effect_until_their_boundary(self) -> None:
+        scenario = signature_scenario()
+        resource = InterventionResource(
+            id="late-generator",
+            name="Late generator",
+            capabilities=(ServiceType.POWER,),
+            travel_times=(
+                TravelTime(
+                    asset_id="deep-pump",
+                    travel_minutes=1,
+                    setup_minutes=1,
+                ),
+            ),
+        )
+        intervention = Intervention(
+            id="late-pump-backup",
+            resource_id=resource.id,
+            target_asset_id="deep-pump",
+            dependency_group_id="pump-power",
+            dispatch_minute=0,
+        )
+        planned = Scenario(
+            id="late-arrival",
+            horizon_minutes=scenario.horizon_minutes,
+            assets=scenario.assets,
+            demands=scenario.demands,
+            faults=scenario.faults,
+            resources=(resource,),
+            interventions=(intervention,),
+        )
+
+        result = simulate(planned)
+        by_minute = {
+            step.minute: {item.asset_id: item for item in step.assets}
+            for step in result.steps
+        }
+        self.assertNotIn("late-pump-backup", result.steps[1].active_intervention_ids)
+        self.assertFalse(by_minute[1]["deep-pump"].service_available)
+        self.assertFalse(by_minute[1]["air-scrubber"].service_available)
+        self.assertIn("late-pump-backup", result.steps[2].active_intervention_ids)
+        self.assertTrue(by_minute[2]["deep-pump"].service_available)
+        self.assertTrue(by_minute[2]["air-scrubber"].service_available)
+
+    def test_arrival_at_buffer_exhaustion_boundary_prevents_outage(self) -> None:
+        scenario = signature_scenario()
+        resource = InterventionResource(
+            id="boundary-generator",
+            name="Boundary generator",
+            capabilities=(ServiceType.POWER,),
+            travel_times=(
+                TravelTime(
+                    asset_id="deep-pump",
+                    travel_minutes=1,
+                    setup_minutes=0,
+                ),
+            ),
+        )
+        intervention = Intervention(
+            id="boundary-pump-backup",
+            resource_id=resource.id,
+            target_asset_id="deep-pump",
+            dependency_group_id="pump-power",
+            dispatch_minute=0,
+        )
+        planned = Scenario(
+            id="boundary-arrival",
+            horizon_minutes=scenario.horizon_minutes,
+            assets=scenario.assets,
+            demands=scenario.demands,
+            faults=scenario.faults,
+            resources=(resource,),
+            interventions=(intervention,),
+        )
+
+        result = simulate(planned)
+        at_arrival = {
+            asset.asset_id: asset for asset in result.steps[1].assets
+        }
+        self.assertIn("boundary-pump-backup", result.steps[1].active_intervention_ids)
+        self.assertTrue(at_arrival["deep-pump"].service_available)
+        self.assertTrue(at_arrival["air-scrubber"].service_available)
+
     def test_backup_does_not_clear_a_physical_fault(self) -> None:
         scenario = hand_calculated_scenario()
         resource = InterventionResource(
             id="portable-generator",
             name="Portable generator",
             capabilities=(ServiceType.POWER,),
-            travel_times=(TravelTime(asset_id="pump", minutes=0),),
+            travel_times=(TravelTime(asset_id="pump", travel_minutes=0),),
         )
         intervention = Intervention(
             id="generator-to-pump",

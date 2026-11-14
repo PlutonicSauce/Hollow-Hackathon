@@ -1,4 +1,4 @@
-"""Validated input and output contracts for the Milestone 1 model."""
+"""Validated input and output contracts for LIFELINE's first two milestones."""
 
 from __future__ import annotations
 
@@ -107,7 +107,8 @@ class Demand(Contract):
 
 class TravelTime(Contract):
     asset_id: NonEmptyString
-    minutes: NonNegativeInt
+    travel_minutes: NonNegativeInt
+    setup_minutes: NonNegativeInt = 0
 
 
 class InterventionResource(Contract):
@@ -136,7 +137,6 @@ class Intervention(Contract):
     target_asset_id: NonEmptyString
     dependency_group_id: NonEmptyString
     dispatch_minute: NonNegativeInt
-    setup_minutes: NonNegativeInt = 0
     duration_minutes: PositiveInt | None = None
 
 
@@ -211,6 +211,7 @@ class Scenario(Contract):
                 )
 
         seen_resource_assignments: set[str] = set()
+        seen_intervention_groups: set[str] = set()
         for intervention in self.interventions:
             resource = resources_by_id.get(intervention.resource_id)
             if resource is None:
@@ -224,6 +225,12 @@ class Scenario(Contract):
                     "intervention in a scenario"
                 )
             seen_resource_assignments.add(intervention.resource_id)
+            if intervention.dependency_group_id in seen_intervention_groups:
+                raise ValueError(
+                    f"dependency group {intervention.dependency_group_id} has "
+                    "multiple interventions"
+                )
+            seen_intervention_groups.add(intervention.dependency_group_id)
 
             target = assets_by_id.get(intervention.target_asset_id)
             if target is None:
@@ -243,7 +250,11 @@ class Scenario(Contract):
                     f"{target_group[1].service_type}"
                 )
             travel_time = next(
-                (route.minutes for route in resource.travel_times if route.asset_id == target.id),
+                (
+                    route
+                    for route in resource.travel_times
+                    if route.asset_id == target.id
+                ),
                 None,
             )
             if travel_time is None:
@@ -255,7 +266,9 @@ class Scenario(Contract):
                     f"intervention {intervention.id} dispatches at or after the horizon"
                 )
             active_from = (
-                intervention.dispatch_minute + travel_time + intervention.setup_minutes
+                intervention.dispatch_minute
+                + travel_time.travel_minutes
+                + travel_time.setup_minutes
             )
             if active_from >= self.horizon_minutes:
                 raise ValueError(
@@ -331,6 +344,64 @@ class SimulationResult(Contract):
     total_service_person_minutes: NonNegativeInt
     total_weighted_service_person_minutes: NonNegativeInt
     total_possible_service_person_minutes: NonNegativeInt
+
+
+class PolicyName(StrEnum):
+    NO_INTERVENTION = "no_intervention"
+    STATIC_PRIORITY = "static_priority"
+    GREEDY = "greedy"
+
+
+class OptimizationPolicy(Contract):
+    """Exact optimizer policy parameters; tolerance is a relative primary-score loss."""
+
+    primary_tolerance_ppm: PartsPerMillion = 0
+    max_candidate_plans: PositiveInt = 100_000
+
+
+class CommunityServiceCoverage(Contract):
+    demand_id: NonEmptyString
+    community_id: NonEmptyString
+    service_type: ServiceType
+    weighted_service_person_minutes: NonNegativeInt
+    total_weighted_service_person_minutes: PositiveInt
+    coverage_parts_per_million: PartsPerMillion
+
+
+class ObjectiveValue(Contract):
+    weighted_service_person_minutes: NonNegativeInt
+    minimum_community_service_coverage_ppm: PartsPerMillion
+    deployment_minutes: NonNegativeInt
+    intervention_count: NonNegativeInt
+
+
+class PlanSummary(Contract):
+    plan_id: NonEmptyString
+    interventions: tuple[Intervention, ...]
+    idle_resource_ids: tuple[NonEmptyString, ...]
+    objective: ObjectiveValue
+    demand_metrics: tuple[DemandMetric, ...]
+    community_service_coverages: tuple[CommunityServiceCoverage, ...]
+
+
+class BaselineComparison(Contract):
+    baseline: PolicyName
+    plan: PlanSummary
+    primary_score_delta: StrictInt
+    minimum_community_service_coverage_delta_ppm: StrictInt
+
+
+class OptimizationResult(Contract):
+    policy: OptimizationPolicy
+    candidate_plans: PositiveInt
+    feasible_plans: PositiveInt
+    plans_evaluated: PositiveInt
+    fairness_eligible_plans: PositiveInt
+    exhaustive_search_complete: bool
+    best_primary_score: NonNegativeInt
+    selected_plan: PlanSummary
+    baseline_comparisons: tuple[BaselineComparison, ...]
+    computation_time_ns: NonNegativeInt
 
 
 def _unique_by_id(items: tuple[Contract, ...], label: str) -> dict[str, Contract]:
