@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { api } from "./api";
 import type {
   Asset,
   Evaluation,
+  Plan,
   Receipt,
   Scenario,
   ScenarioChoice,
@@ -47,26 +48,40 @@ function App() {
   const [error, setError] = useState("");
   const [verification, setVerification] = useState<VerificationReport | null>(null);
   const [tolerancePpm, setTolerancePpm] = useState(0);
+  const [resultsStale, setResultsStale] = useState(false);
   const evaluationRequest = useRef(0);
+  const inputRevision = useRef(0);
+  const verificationRequest = useRef(0);
 
   const runEvaluation = useCallback(
     async (input: Scenario, tolerance: number) => {
       const requestId = ++evaluationRequest.current;
+      const requestRevision = inputRevision.current;
       setLoading(true);
+      setResultsStale(true);
       setPlaying(false);
       setError("");
       setVerification(null);
+      verificationRequest.current += 1;
+      setVerifying(false);
       try {
         const result = await api.evaluate(input, {
           primary_tolerance_ppm: tolerance,
         });
-        if (requestId === evaluationRequest.current) {
+        if (
+          requestId === evaluationRequest.current &&
+          requestRevision === inputRevision.current
+        ) {
           setEvaluation(result);
+          setResultsStale(false);
           setMinute(0);
           setPlanKey("optimized");
         }
       } catch (reason) {
-        if (requestId === evaluationRequest.current) {
+        if (
+          requestId === evaluationRequest.current &&
+          requestRevision === inputRevision.current
+        ) {
           setError(reason instanceof Error ? reason.message : "The scenario could not be evaluated.");
         }
       } finally {
@@ -94,11 +109,14 @@ function App() {
   useEffect(() => {
     let active = true;
     const requestId = ++evaluationRequest.current;
+    const requestRevision = ++inputRevision.current;
     setLoading(true);
     setPlaying(false);
     setEvaluation(null);
+    setResultsStale(false);
     setScenario(null);
     setVerification(null);
+    setVerifying(false);
     setError("");
     api
       .scenario(scenarioKey)
@@ -110,14 +128,25 @@ function App() {
         const result = await api.evaluate(loaded, {
           primary_tolerance_ppm: tolerancePpm,
         });
-        if (active && requestId === evaluationRequest.current) {
+        if (
+          active &&
+          requestId === evaluationRequest.current &&
+          requestRevision === inputRevision.current
+        ) {
           setEvaluation(result);
+          setResultsStale(false);
           setMinute(0);
           setPlanKey("optimized");
         }
       })
       .catch((reason: unknown) => {
-        if (active && requestId === evaluationRequest.current) setError(reason instanceof Error ? reason.message : "Could not load the incident.");
+        if (
+          active &&
+          requestId === evaluationRequest.current &&
+          requestRevision === inputRevision.current
+        ) {
+          setError(reason instanceof Error ? reason.message : "Could not load the incident.");
+        }
       })
       .finally(() => {
         if (active && requestId === evaluationRequest.current) setLoading(false);
@@ -136,6 +165,16 @@ function App() {
       : evaluation?.optimization.baseline_comparisons.find(
           (item) => item.baseline === planKey,
         )?.plan;
+  const activeFaults = scenario?.faults.filter((fault) =>
+    currentStep?.active_fault_ids.includes(fault.id),
+  ) ?? [];
+  const affectedServices = scenario?.demands
+    .filter((demand) =>
+      currentStep?.assets.find((state) => state.asset_id === demand.served_by_asset_id)
+        ?.service_available === false,
+    )
+    .map((demand) => demand.service_type)
+    .filter((service, index, all) => all.indexOf(service) === index) ?? [];
 
   useEffect(() => {
     if (!playing || !evaluation) return;
@@ -152,13 +191,33 @@ function App() {
   }, [playing, evaluation]);
 
   const changeScenario = (key: string) => {
+    evaluationRequest.current += 1;
+    inputRevision.current += 1;
+    verificationRequest.current += 1;
     setScenarioKey(key);
     setTolerancePpm(0);
     setPlaying(false);
+    setLoading(false);
+    setResultsStale(false);
+    setScenario(null);
+    setBaseScenario(null);
+    setAvailableResourceIds([]);
+    setEvaluation(null);
+    setVerification(null);
+    setVerifying(false);
+  };
+
+  const markInputsDirty = () => {
+    inputRevision.current += 1;
+    verificationRequest.current += 1;
+    setResultsStale(true);
+    setVerification(null);
+    setVerifying(false);
   };
 
   const setResourceAvailable = (resourceId: string, available: boolean) => {
     if (!baseScenario) return;
+    markInputsDirty();
     const ids = new Set(availableResourceIds);
     if (available) ids.add(resourceId);
     else ids.delete(resourceId);
@@ -172,6 +231,7 @@ function App() {
 
   const updateTravelTime = (resourceId: string, assetId: string, minutes: number) => {
     if (!scenario || !baseScenario) return;
+    markInputsDirty();
     const update = (source: Scenario): Scenario => ({
       ...source,
       resources: source.resources.map((resource) =>
@@ -198,14 +258,28 @@ function App() {
   };
 
   const verifyReceipt = async (receipt: Receipt) => {
+    if (resultsStale || !evaluation || receipt !== evaluation.receipt) return;
+    const requestId = ++verificationRequest.current;
+    const requestRevision = inputRevision.current;
     setVerifying(true);
     setError("");
     try {
-      setVerification(await api.verify(receipt));
+      const report = await api.verify(receipt);
+      if (
+        requestId === verificationRequest.current &&
+        requestRevision === inputRevision.current
+      ) {
+        setVerification(report);
+      }
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Receipt verification failed.");
+      if (
+        requestId === verificationRequest.current &&
+        requestRevision === inputRevision.current
+      ) {
+        setError(reason instanceof Error ? reason.message : "Receipt verification failed.");
+      }
     } finally {
-      setVerifying(false);
+      if (requestId === verificationRequest.current) setVerifying(false);
     }
   };
 
@@ -265,13 +339,34 @@ function App() {
             <button type="button" onClick={() => setError("")} aria-label="Dismiss error">×</button>
           </div>
         )}
+        {resultsStale && (
+          <div className="stale-banner" role="status" aria-live="polite">
+            <div>
+              <strong>{loading ? "Recalculating edited inputs" : "Inputs have changed"}</strong>
+              <span>Result panels and the trace still show the previous run. Recompute before treating them as current.</span>
+            </div>
+            <button type="button" onClick={recalculate} disabled={loading || !scenario}>
+              {loading ? "Recomputing…" : "Apply changes"}
+            </button>
+          </div>
+        )}
 
         <section className="incident-strip" aria-label="Incident summary">
           <div className="incident-title">
             <span className="incident-icon" aria-hidden="true"><Icon name="bolt" /></span>
             <div>
-              <span className="eyebrow">INCIDENT OVERVIEW</span>
-              <strong>{scenario?.faults.map((fault) => fault.id.replaceAll("-", " ")).join("  ·  ") || "No active faults"}</strong>
+              <span className="eyebrow">WHAT HAPPENED</span>
+              <strong>
+                {activeFaults.map((fault) => {
+                  const asset = scenario?.assets.find((item) => item.id === fault.asset_id);
+                  return asset ? `${asset.provides} · ${asset.name}` : fault.id.replaceAll("-", " ");
+                }).join("  ·  ") || "No active physical faults"}
+              </strong>
+              <small>
+                {affectedServices.length
+                  ? `Unavailable modeled services: ${affectedServices.join(", ")}`
+                  : "No modeled demand currently unavailable"}
+              </small>
             </div>
           </div>
           <div className="incident-fact"><span>HORIZON</span><strong>{scenario?.horizon_minutes ?? "—"} <small>min</small></strong></div>
@@ -279,7 +374,7 @@ function App() {
           <div className="incident-fact"><span>RESPONSE TEAMS</span><strong>{scenario?.resources.length ?? "—"}</strong></div>
           <div className="incident-status">
             <span className="status-pulse" />
-            {loading ? "RECOMPUTING" : "MODEL READY"}
+            {loading ? "RECOMPUTING" : resultsStale ? "INPUTS CHANGED" : "MODEL READY"}
           </div>
         </section>
 
@@ -295,48 +390,68 @@ function App() {
                 <span className="panel-kicker">DEPENDENCY MAP</span>
                 <h2>System topology</h2>
               </div>
-              <div className="legend" aria-label="Map legend">
-                <span><i className="legend-good" /> Online</span>
-                <span><i className="legend-warn" /> Degraded</span>
+              <div className="legend" aria-label="Asset status legend">
+                <span><i className="legend-good" /> Working</span>
+                <span><i className="legend-warn" /> Reserve</span>
+                <span><i className="legend-backup" /> Temporary backup</span>
                 <span><i className="legend-down" /> Unavailable</span>
+                <span><i className="legend-fault" /> Physical fault</span>
               </div>
             </div>
+            {resultsStale && evaluation && (
+              <div className="stale-notice" role="status">
+                Showing the previous run. Recompute to apply your edited inputs.
+              </div>
+            )}
             {scenario && currentStep ? (
               <DependencyMap
                 assets={scenario.assets}
                 step={currentStep}
                 demands={scenario.demands}
-                loading={loading}
+                selectedPlan={selectedPlan}
+                planLabel={PLAN_LABELS[planKey]}
+                loading={loading || resultsStale}
               />
             ) : (
               <div className="map-placeholder">{loading ? "Evaluating scenario…" : "Select a scenario to view its dependency map."}</div>
             )}
             <div className="map-caption">
-              <span><Icon name="branch" /> Arrows show provider → dependent service</span>
-              <span>AND across groups · OR across providers</span>
+              <span><Icon name="branch" /> Arrows show provider → dependent</span>
+              <span>Dashed amber = temporary support, not repair</span>
             </div>
           </div>
 
-          <aside className="panel response-panel">
+          <aside className={`panel response-panel ${resultsStale ? "results-stale" : ""}`}>
             <div className="panel-heading response-heading">
               <div>
                 <span className="panel-kicker">COMPUTED RESPONSE</span>
                 <h2>Recommended plan</h2>
               </div>
-              <span className="exact-chip"><Icon name="check" /> EXACT</span>
+              {evaluation && (
+                <span className={`exact-chip ${evaluation.optimization.exhaustive_search_complete ? "" : "bounded-search"}`}>
+                  <Icon name={evaluation.optimization.exhaustive_search_complete ? "check" : "warning"} />
+                  {evaluation.optimization.exhaustive_search_complete ? "EXACT" : "BOUNDED SEARCH"}
+                </span>
+              )}
             </div>
             {evaluation ? (
               <>
-                    <div className="recommendation-score">
-                      <span>WEIGHTED SERVICE-PERSON-MINUTES</span>
+                <div className="recommendation-score">
+                  <span>WEIGHTED SERVICE-PERSON-MINUTES</span>
                   <strong>{formatNumber(evaluation.optimization.selected_plan.objective.weighted_service_person_minutes)}</strong>
-                  <small>Model objective · not lives saved</small>
+                  <small>Modeled service exposure · not people or outcomes</small>
                 </div>
+                {resultsStale && (
+                  <div className="stale-notice" role="status">
+                    Previous recommendation · these results do not include your edits.
+                  </div>
+                )}
                 <div className="recommendation-lead">
                   {evaluation.optimization.selected_plan.interventions.length
                     ? `${evaluation.optimization.selected_plan.interventions.length} crew assignment${evaluation.optimization.selected_plan.interventions.length === 1 ? "" : "s"} selected from ${evaluation.optimization.candidate_plans} candidate plans.`
                     : "No assignment improves the configured objective; all teams remain available."}
                 </div>
+                <RecommendationInsight scenario={scenario ?? evaluation.scenario} evaluation={evaluation} />
                 <div className="dispatch-list">
                   {evaluation.optimization.selected_plan.interventions.length ? (
                     evaluation.optimization.selected_plan.interventions.map((action) => {
@@ -361,11 +476,14 @@ function App() {
                   )}
                 </div>
                 <div className="search-proof">
-                  <span><Icon name="check" /> Exhaustive search complete</span>
-                  <span>{formatNumber(evaluation.optimization.plans_evaluated)} feasible plans evaluated</span>
+                  <span className={evaluation.optimization.exhaustive_search_complete ? "" : "search-limited"}>
+                    <Icon name={evaluation.optimization.exhaustive_search_complete ? "check" : "warning"} />
+                    {evaluation.optimization.exhaustive_search_complete ? "Exhaustive search complete" : "Search bound reached"}
+                  </span>
+                  <span>{formatNumber(evaluation.optimization.plans_evaluated)} plans evaluated</span>
                 </div>
-                <button className="primary-button" type="button" onClick={recalculate} disabled={loading || !scenario}>
-                  {loading ? <><span className="spinner" /> Recomputing…</> : <><Icon name="refresh" /> Recalculate response</>}
+                <button className="primary-button" type="button" onClick={recalculate} disabled={loading || !scenario || !resultsStale}>
+                  {loading ? <><span className="spinner" /> Recomputing…</> : <><Icon name="refresh" /> {resultsStale ? "Recalculate response" : "Results up to date"}</>}
                 </button>
               </>
             ) : (
@@ -433,7 +551,7 @@ function App() {
           </div>
         </section>
 
-        <div className="lower-grid">
+        <div className={`lower-grid ${resultsStale ? "results-stale" : ""}`}>
           <section className="panel comparison-panel">
             <div className="panel-heading">
               <div><span className="panel-kicker">COUNTERFACTUALS</span><h2>Same incident. Different plans.</h2></div>
@@ -508,11 +626,11 @@ function App() {
           </section>
         </div>
 
-        <section className="panel controls-panel">
+        <section className="panel controls-panel" aria-labelledby="conditions-heading">
           <div className="controls-heading">
-            <div><span className="panel-kicker">WHAT IF</span><h2>Change the response conditions</h2></div>
+            <div><span className="panel-kicker">WHAT IF</span><h2 id="conditions-heading">Change the response conditions</h2></div>
             <button className="secondary-button" type="button" onClick={recalculate} disabled={loading || !scenario}>
-              {loading ? "Evaluating…" : "Apply changes & recompute"}
+              {loading ? "Evaluating…" : resultsStale ? "Apply changes & recompute" : "Recompute current plan"}
             </button>
           </div>
           <div className="controls-grid">
@@ -527,6 +645,7 @@ function App() {
                     checked={availableResourceIds.includes(resource.id)}
                     onChange={(event) => setResourceAvailable(resource.id, event.target.checked)}
                     aria-label={`${resource.name} available`}
+                    disabled={loading}
                   />
                 </label>
               )) : <p className="empty-control">This scenario has no dispatchable resources.</p>}
@@ -544,6 +663,7 @@ function App() {
                     value={scenario?.resources.find((item) => item.id === resource.id)?.travel_times.find((item) => item.asset_id === route.asset_id)?.travel_minutes ?? route.travel_minutes}
                     onChange={(event) => updateTravelTime(resource.id, route.asset_id, Math.max(0, Number(event.target.value)))}
                     aria-label={`${resource.name} travel minutes to ${route.asset_id}`}
+                    disabled={loading}
                   />
                   <small>min</small>
                 </label>
@@ -560,7 +680,11 @@ function App() {
                 max={500_000}
                 step={50_000}
                 value={tolerancePpm}
-                onChange={(event) => setTolerancePpm(Number(event.target.value))}
+                onChange={(event) => {
+                  markInputsDirty();
+                  setTolerancePpm(Number(event.target.value));
+                }}
+                disabled={loading}
               />
               <span className="control-hint">Among eligible plans, maximize minimum coverage across explicit demand records.</span>
             </div>
@@ -568,9 +692,12 @@ function App() {
         </section>
 
         <ReceiptInspector
+          className={resultsStale ? "results-stale" : ""}
           evaluation={evaluation}
           verification={verification}
           verifying={verifying}
+          stale={resultsStale}
+          scenarioName={choice?.name ?? scenario?.id ?? "selected scenario"}
           onVerify={verifyReceipt}
         />
 
@@ -583,23 +710,138 @@ function App() {
   );
 }
 
+function RecommendationInsight({
+  scenario,
+  evaluation,
+}: {
+  scenario: Scenario;
+  evaluation: Evaluation;
+}) {
+  const plan = evaluation.optimization.selected_plan;
+  const complementaryAssignments = new Map<
+    string,
+    Array<{ groupId: string; description: string }>
+  >();
+  for (const action of plan.interventions) {
+    const asset = scenario.assets.find((item) => item.id === action.target_asset_id);
+    const group = asset?.dependency_groups.find(
+      (item) => item.id === action.dependency_group_id,
+    );
+    const resource = scenario.resources.find((item) => item.id === action.resource_id);
+    if (!asset || !group || !resource) continue;
+    const assignment = {
+      groupId: group.id,
+      description: `${resource.name} covers the ${group.service_type} input`,
+    };
+    complementaryAssignments.set(asset.id, [
+      ...(complementaryAssignments.get(asset.id) ?? []),
+      assignment,
+    ]);
+  }
+  const sharedTarget = [...complementaryAssignments.entries()].find(([, assignments]) =>
+    new Set(assignments.map((assignment) => assignment.groupId)).size > 1,
+  );
+  const sharedAsset = sharedTarget
+    ? scenario.assets.find((asset) => asset.id === sharedTarget[0])
+    : undefined;
+  const explanation = sharedAsset && sharedTarget
+    ? `Separate crews cover different inputs to ${sharedAsset.name}: ${sharedTarget[1]
+      .filter((assignment, index, assignments) =>
+        assignments.findIndex((item) => item.groupId === assignment.groupId) === index,
+      )
+      .map((assignment) => assignment.description)
+      .join("; ")}.`
+    : "The selected plan follows the declared service objective and fairness policy.";
+  const comparisons = evaluation.optimization.baseline_comparisons.filter(
+    (item) => item.baseline === "static_priority" || item.baseline === "greedy",
+  );
+  const baselineNames = comparisons.map((item) =>
+    item.baseline === "static_priority" ? "static-priority" : "greedy",
+  );
+  const improvedServices = [
+    ...new Set(
+      plan.demand_metrics
+        .filter((metric) =>
+          comparisons.length > 0 &&
+          comparisons.every((comparison) => {
+            const baselineMetric = comparison.plan.demand_metrics.find(
+              (item) => item.demand_id === metric.demand_id,
+            );
+            return baselineMetric !== undefined &&
+              metric.service_person_minutes > baselineMetric.service_person_minutes;
+          }),
+        )
+        .map((metric) => metric.service_type),
+    ),
+  ];
+  const serviceImpact = improvedServices.length > 0
+    ? ` Modeled service delivery for ${improvedServices.join(" and ")} is higher than in the ${baselineNames.join(" and ")} plans.`
+    : "";
+
+  return (
+    <section className="recommendation-insight" aria-label="Why this plan">
+      <span className="panel-kicker">WHY THIS PLAN</span>
+      <p>{explanation}{serviceImpact}</p>
+      <div className="insight-comparisons">
+        {comparisons.map((item) => (
+          <div key={item.baseline}>
+            <span>vs {item.baseline === "static_priority" ? "static priority" : "greedy"}</span>
+            <strong>{formatSigned(item.primary_score_delta)} wSPM</strong>
+          </div>
+        ))}
+      </div>
+      <small>Backend-computed score difference under this synthetic model.</small>
+    </section>
+  );
+}
+
+function formatSigned(value: number) {
+  if (value > 0) return `+${formatNumber(value)}`;
+  if (value < 0) return `−${formatNumber(Math.abs(value))}`;
+  return "0";
+}
+
 function DependencyMap({
   assets,
   step,
   demands,
+  selectedPlan,
+  planLabel,
   loading,
 }: {
   assets: Asset[];
   step: TimeStep;
   demands: Scenario["demands"];
+  selectedPlan: Plan | undefined;
+  planLabel: string;
   loading: boolean;
 }) {
-  const positions = useMemo(() => layoutAssets(assets), [assets]);
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [canvasWidth, setCanvasWidth] = useState(780);
+  useLayoutEffect(() => {
+    const element = canvasRef.current;
+    if (!element) return;
+    const measure = () => {
+      const width = Math.round(element.getBoundingClientRect().width);
+      if (width > 0) setCanvasWidth(width);
+    };
+    measure();
+    const observer = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(measure);
+    observer?.observe(element);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
+
+  const layout = useMemo(
+    () => layoutAssets(assets, canvasWidth),
+    [assets, canvasWidth],
+  );
   const states = new Map(step.assets.map((state) => [state.asset_id, state]));
-  const maxLevel = Math.max(0, ...[...positions.values()].map((item) => item.level));
-  const maxRow = Math.max(0, ...[...positions.values()].map((item) => item.row));
-  const width = Math.max(720, 140 + (maxLevel + 1) * 250);
-  const height = Math.max(300, 112 + (maxRow + 1) * 112);
   const edgeList = assets.flatMap((asset) =>
     asset.dependency_groups.flatMap((group) =>
       group.provider_asset_ids.map((providerId) => ({
@@ -612,53 +854,164 @@ function DependencyMap({
     ),
   );
   const demandAssets = new Set(demands.map((demand) => demand.served_by_asset_id));
+  const activeInterventionIds = new Set(step.active_intervention_ids);
 
   return (
-    <div className={`network-canvas ${loading ? "network-loading" : ""}`} role="img" aria-label={`Infrastructure dependency graph at minute ${step.minute}`}>
-      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMinYMin meet">
+    <div
+      ref={canvasRef}
+      className={`network-canvas ${loading ? "network-loading" : ""}`}
+      role="img"
+      aria-label={`Infrastructure dependency graph for ${planLabel} at minute ${step.minute}`}
+      data-orientation={layout.orientation}
+    >
+      <svg
+        viewBox={`0 0 ${layout.width} ${layout.height}`}
+        role="presentation"
+        preserveAspectRatio="xMidYMin meet"
+      >
         <defs>
           <marker id="arrow-tip" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
             <path d="M0,0 L8,4 L0,8 z" />
           </marker>
         </defs>
         <g className="edge-layer">
-          {edgeList.map((edge) => {
-            const from = positions.get(edge.providerId);
-            const to = positions.get(edge.targetId);
-            const targetState = states.get(edge.targetId);
+          {edgeList.map((edge, edgeIndex) => {
+            const from = layout.positions.get(edge.providerId);
+            const to = layout.positions.get(edge.targetId);
+            const providerState = states.get(edge.providerId);
             if (!from || !to) return null;
-            const satisfied = !targetState?.unsatisfied_dependency_group_ids.includes(edge.groupId);
-            const x1 = from.x + 82;
-            const x2 = to.x - 82;
-            const curve = Math.max(28, (x2 - x1) * 0.42);
+            const edgeState = providerState?.physical_fault_active
+              ? "faulted"
+              : !providerState?.service_available
+                ? "failed"
+                : providerState.unsatisfied_dependency_group_ids.length
+                  ? "buffered"
+                  : "active";
+            let path: string;
+            if (layout.orientation === "horizontal") {
+              const x1 = from.x + layout.nodeWidth / 2;
+              const x2 = to.x - layout.nodeWidth / 2;
+              const curve = Math.max(18, (x2 - x1) * 0.42);
+              path = `M ${x1} ${from.y} C ${x1 + curve} ${from.y}, ${x2 - curve} ${to.y}, ${x2} ${to.y}`;
+            } else {
+              const x1 = from.x + layout.nodeWidth / 2;
+              const x2 = to.x + layout.nodeWidth / 2;
+              const lane = layout.width - 8 - (edgeIndex % 4) * 8;
+              path = `M ${x1} ${from.y} C ${lane} ${from.y + 22}, ${lane} ${to.y - 22}, ${lane} ${to.y} L ${x2} ${to.y}`;
+            }
             return (
-              <g key={edge.key} className={`edge-group ${satisfied ? "edge-active" : "edge-failed"}`}>
-                <path d={`M ${x1} ${from.y} C ${x1 + curve} ${from.y}, ${x2 - curve} ${to.y}, ${x2} ${to.y}`} markerEnd="url(#arrow-tip)" />
-                <text x={(x1 + x2) / 2} y={(from.y + to.y) / 2 - 7}>{edge.service}</text>
+              <g key={edge.key} className={`edge-group edge-${edgeState}`}>
+                <title>{`${edge.service}: ${edge.providerId} to ${edge.targetId}`}</title>
+                <path d={path} markerEnd="url(#arrow-tip)" />
+                {layout.orientation === "horizontal" && (
+                  <text
+                    x={(from.x + to.x) / 2}
+                    y={(from.y + to.y) / 2 - 7}
+                  >
+                    {edge.service}
+                  </text>
+                )}
               </g>
             );
           })}
         </g>
         <g className="node-layer">
           {assets.map((asset) => {
-            const position = positions.get(asset.id);
+            const position = layout.positions.get(asset.id);
             const state = states.get(asset.id);
             if (!position || !state) return null;
+            const backupServices = selectedPlan?.interventions
+              .filter((action) =>
+                action.target_asset_id === asset.id &&
+                activeInterventionIds.has(action.id),
+              )
+              .map((action) =>
+                asset.dependency_groups.find(
+                  (group) => group.id === action.dependency_group_id,
+                )?.service_type,
+              )
+              .filter((service): service is string => Boolean(service))
+              .filter((service, index, all) => all.indexOf(service) === index) ?? [];
             const status = state.physical_fault_active
               ? "faulted"
-              : state.service_available
-                ? state.unsatisfied_dependency_group_ids.length ? "buffered" : "online"
-                : "offline";
+              : !state.service_available
+                ? "offline"
+                : backupServices.length
+                  ? "backup"
+                  : state.unsatisfied_dependency_group_ids.length
+                    ? "buffered"
+                    : "online";
+            const statusLabel = status === "faulted"
+              ? "PHYSICAL FAULT"
+              : status === "offline"
+                ? "SERVICE UNAVAILABLE"
+                : status === "backup"
+                  ? `TEMP BACKUP · ${backupServices.join(" + ")}`
+                  : status === "buffered"
+                    ? `RESERVE · ${state.buffer_units} ${asset.buffer.unit}`
+                    : "SERVICE WORKING";
+            const inputs = [
+              ...new Set(asset.dependency_groups.map((group) => group.service_type)),
+            ];
+            const nameLines = wrapAssetName(
+              asset.name,
+              Math.max(15, Math.floor((layout.nodeWidth - 24) / 7.2)),
+            );
+            const nameTop = -8 - (nameLines.length - 1) * 7;
             return (
-              <g key={asset.id} transform={`translate(${position.x}, ${position.y})`} className={`asset-node node-${status}`}>
-                <rect x="-82" y="-35" width="164" height="70" rx="10" />
-                <circle className="node-indicator" cx="-65" cy="-17" r="4" />
-                <text className="node-kind" x="-54" y="-13">{asset.kind.replaceAll("_", " ")}</text>
-                <text className="node-name" x="0" y="7" textAnchor="middle">{asset.name}</text>
-                <text className="node-status" x="0" y="24" textAnchor="middle">
-                  {state.physical_fault_active ? "PHYSICAL FAULT" : state.service_available ? state.unsatisfied_dependency_group_ids.length ? `BUFFER · ${state.buffer_units} ${asset.buffer.unit}` : "SERVICE AVAILABLE" : "SERVICE UNAVAILABLE"}
+              <g
+                key={asset.id}
+                transform={`translate(${position.x}, ${position.y})`}
+                className={`asset-node node-${status}`}
+              >
+                <rect
+                  x={-layout.nodeWidth / 2}
+                  y={-layout.nodeHeight / 2}
+                  width={layout.nodeWidth}
+                  height={layout.nodeHeight}
+                  rx="9"
+                />
+                <circle
+                  className="node-indicator"
+                  cx={-layout.nodeWidth / 2 + 13}
+                  cy={-layout.nodeHeight / 2 + 14}
+                  r="4"
+                />
+                <text
+                  className="node-kind"
+                  x={-layout.nodeWidth / 2 + 23}
+                  y={-layout.nodeHeight / 2 + 18}
+                >
+                  {asset.kind.replaceAll("_", " ")}
                 </text>
-                {demandAssets.has(asset.id) && <circle className="demand-ring" cx="70" cy="-22" r="5" />}
+                <text className="node-name" x="0" y={nameTop} textAnchor="middle">
+                  {nameLines.map((line, index) => (
+                    <tspan key={`${asset.id}-name-${index}`} x="0" dy={index ? 14 : 0}>
+                      {line}
+                    </tspan>
+                  ))}
+                </text>
+                {inputs.length > 0 && (
+                  <text className="node-inputs" x="0" y={layout.nodeHeight / 2 - 23} textAnchor="middle">
+                    INPUTS · {inputs.join(" + ")}
+                  </text>
+                )}
+                <text
+                  className="node-status"
+                  x="0"
+                  y={layout.nodeHeight / 2 - 8}
+                  textAnchor="middle"
+                >
+                  {statusLabel}
+                </text>
+                {demandAssets.has(asset.id) && (
+                  <circle
+                    className="demand-ring"
+                    cx={layout.nodeWidth / 2 - 13}
+                    cy={-layout.nodeHeight / 2 + 14}
+                    r="5"
+                  />
+                )}
               </g>
             );
           })}
@@ -668,7 +1021,7 @@ function DependencyMap({
   );
 }
 
-function layoutAssets(assets: Asset[]) {
+export function layoutAssets(assets: Asset[], width: number) {
   const byId = new Map(assets.map((asset) => [asset.id, asset]));
   const levels = new Map<string, number>();
   const levelOf = (asset: Asset, visiting = new Set<string>()): number => {
@@ -691,49 +1044,129 @@ function layoutAssets(assets: Asset[]) {
     const level = levels.get(asset.id) ?? 0;
     byLevel.set(level, [...(byLevel.get(level) ?? []), asset]);
   }
+  const maxLevel = Math.max(0, ...levels.values());
+  const nodeHeight = 104;
   const positions = new Map<string, { x: number; y: number; level: number; row: number }>();
-  for (const [level, items] of byLevel) {
-    items.forEach((asset, row) => {
-      positions.set(asset.id, {
-        x: 104 + level * 248,
-        y: 66 + row * 112,
-        level,
-        row,
+  if (width >= 700) {
+    const nodeWidth = 210;
+    const margin = 14;
+    const levelCount = maxLevel + 1;
+    const columnStep = levelCount > 1
+      ? (width - margin * 2 - nodeWidth) / maxLevel
+      : 0;
+    let maxRows = 1;
+    for (const [level, items] of byLevel) {
+      maxRows = Math.max(maxRows, items.length);
+      items.forEach((asset, row) => {
+        positions.set(asset.id, {
+          x: levelCount > 1 ? margin + nodeWidth / 2 + level * columnStep : width / 2,
+          y: 60 + row * 132,
+          level,
+          row,
+        });
       });
-    });
+    }
+    return {
+      orientation: "horizontal" as const,
+      width,
+      height: 60 + maxRows * 132,
+      nodeWidth,
+      nodeHeight,
+      positions,
+    };
   }
-  return positions;
+
+  const nodeWidth = Math.max(160, width - 72);
+  const orderedAssets = [...assets].sort(
+    (left, right) => (levels.get(left.id) ?? 0) - (levels.get(right.id) ?? 0),
+  );
+  orderedAssets.forEach((asset, row) => {
+    positions.set(asset.id, {
+      x: width / 2,
+      y: 60 + row * 138,
+      level: levels.get(asset.id) ?? 0,
+      row,
+    });
+  });
+  return {
+    orientation: "vertical" as const,
+    width,
+    height: 60 + orderedAssets.length * 138,
+    nodeWidth,
+    nodeHeight,
+    positions,
+  };
+}
+
+function wrapAssetName(value: string, maxCharacters: number) {
+  const lines: string[] = [];
+  let line = "";
+  for (const word of value.split(/\s+/)) {
+    const next = line ? `${line} ${word}` : word;
+    if (line && next.length > maxCharacters) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = next;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
 }
 
 function ReceiptInspector({
+  className,
   evaluation,
   verification,
   verifying,
+  stale,
+  scenarioName,
   onVerify,
 }: {
+  className: string;
   evaluation: Evaluation | null;
   verification: VerificationReport | null;
   verifying: boolean;
+  stale: boolean;
+  scenarioName: string;
   onVerify: (receipt: Receipt) => void;
 }) {
+  const exhaustiveSearch = evaluation?.receipt.payload.search.exhaustive_search_complete ?? false;
+
   return (
-    <section className="panel receipt-panel">
+    <section className={`panel receipt-panel ${className}`}>
       <div className="receipt-heading">
         <div><span className="panel-kicker">REPRODUCIBILITY</span><h2>Decision Receipt</h2></div>
         {evaluation && <span className="digest-label"><span className="digest-dot" /> SHA-256 · {evaluation.receipt.integrity.digest.slice(0, 12)}…</span>}
       </div>
       {evaluation ? (
         <>
+          <div className="receipt-explanation">
+            <p>
+              Evaluated {formatNumber(evaluation.receipt.payload.search.plans_evaluated)} candidate plans for <strong>{scenarioName}</strong>.
+              The selected plan follows the recorded objective and fairness policy.
+            </p>
+            <p>
+              Verification checks the receipt, inputs, replay, baselines, and bounded search.
+              A pass confirms agreement with this model; it does not prove physical accuracy or operational safety.
+            </p>
+          </div>
           <div className="receipt-summary">
             <div><span>SCHEMA</span><strong>1.0</strong></div>
-            <div><span>SEARCH</span><strong>{formatNumber(evaluation.receipt.payload.search.plans_evaluated)} plans · exhaustive</strong></div>
+            <div>
+              <span>SEARCH</span>
+              <strong>
+                {formatNumber(evaluation.receipt.payload.search.plans_evaluated)} plans · {exhaustiveSearch ? "exhaustive" : "bound reached"}
+              </strong>
+            </div>
             <div><span>BEST PRIMARY SCORE</span><strong>{formatNumber(evaluation.receipt.payload.search.best_primary_score)} wSPM</strong></div>
             <div><span>SELECTED SCORE</span><strong>{formatNumber(evaluation.receipt.payload.search.selected_primary_score)} wSPM</strong></div>
           </div>
           <div className="receipt-actions">
-            <button className="secondary-button" type="button" onClick={() => onVerify(evaluation.receipt)} disabled={verifying}>
+            <button className="secondary-button" type="button" onClick={() => onVerify(evaluation.receipt)} disabled={verifying || stale}>
               {verifying ? <><span className="spinner" /> Verifying receipt…</> : <><Icon name="shield" /> Verify this decision</>}
             </button>
+            {stale && <span className="receipt-stale-label">Recompute before verifying this receipt.</span>}
             <details className="receipt-details">
               <summary>Inspect receipt payload</summary>
               <pre>{JSON.stringify(evaluation.receipt, null, 2)}</pre>

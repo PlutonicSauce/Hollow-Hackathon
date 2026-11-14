@@ -55,7 +55,7 @@ npm test
 npm run build
 ```
 
-`backend/tests/test_api.py` exercises the real loopback HTTP handlers: catalog/scenario loading, the coupled 1,100-versus-720 outputs, generated receipt verification, route/resource counterfactual changes, malformed/invalid inputs, and candidate-bound errors. `frontend/src/App.test.tsx` verifies rendered outcomes, user-driven resource changes are sent back for recomputation, and the receipt verification action is surfaced. Browser validation additionally loads the running app against the real API; frontend test mocks are not treated as integration evidence.
+`backend/tests/test_api.py` exercises the real loopback HTTP handlers: catalog/scenario loading, the coupled 1,100-versus-720 outputs, generated receipt verification, route/resource counterfactual changes, malformed/invalid inputs, and candidate-bound errors. `frontend/src/App.test.tsx` covers stale results and receipt gating after edits, recomputation and backend errors, plan switching, bounded-search labeling, valid/invalid verification states, keyboard focus order, and graph bounds at mobile and desktop widths. Browser validation additionally loads the running app against the real API; frontend test mocks are not treated as integration evidence.
 
 ## Expected test discipline
 
