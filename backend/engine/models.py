@@ -1,187 +1,343 @@
-"""
-LIFELINE Engine Data Models
-Defines core data structures for infrastructure nodes, dependency edges,
-resources, simulation states, decision receipts, and benchmark comparisons.
-"""
+"""Validated input and output contracts for the Milestone 1 model."""
 
-from enum import Enum
-from typing import Dict, List, Optional, Any
-from pydantic import BaseModel, Field
+from __future__ import annotations
 
+from collections import defaultdict, deque
+from enum import StrEnum
+from typing import Annotated
 
-class ServiceLayer(str, Enum):
-    POWER = "POWER"
-    WATER = "WATER"
-    AIR = "AIR"
-    MEDICAL = "MEDICAL"
-    TRANSIT = "TRANSIT"
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, model_validator
 
 
-class CriticalityTier(int, Enum):
-    TIER_1_LIFE_CRITICAL = 1   # ICUs, Trauma Centers, Main Air Scrubbers
-    TIER_2_ESSENTIAL = 2       # Potable Water Booster Pumps, Power Substations, Main Transit
-    TIER_3_SUPPORT = 3         # Administrative Hubs, Storage Warehouses, Secondary Lighting
+NonEmptyString = Annotated[StrictStr, Field(min_length=1)]
+NonNegativeInt = Annotated[StrictInt, Field(ge=0)]
+PositiveInt = Annotated[StrictInt, Field(gt=0)]
+PartsPerMillion = Annotated[StrictInt, Field(ge=0, le=1_000_000)]
 
 
-class ResourceType(str, Enum):
-    MOBILE_GENERATOR = "MOBILE_GENERATOR"        # Provides 500kW emergency electrical feed
-    WATER_PUMPER_TRUCK = "WATER_PUMPER_TRUCK"    # Injects emergency cooling/potable water
-    AIR_SCRUBBER_BYPASS = "AIR_SCRUBBER_BYPASS"  # Portable scrubber cartridge & bypass kit
-    MULTI_DISCIPLINE_CREW = "MULTI_DISCIPLINE_CREW"  # Versatile repair and cross-tie crew
+class Contract(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-class BaselinePolicy(str, Enum):
-    FCFS = "FCFS"                              # First-Come, First-Served ticket dispatch
-    STATIC_PRIORITY = "STATIC_PRIORITY"        # Highest tier first, ignoring buffers
-    DEGREE_CENTRALITY = "DEGREE_CENTRALITY"    # Highest connectivity node first
-    LIFELINE_OPTIMAL = "LIFELINE_OPTIMAL"      # Counterfactual buffer-aware optimizer
+class ServiceType(StrEnum):
+    POWER = "power"
+    WATER = "water"
+    AIR = "air"
+    MEDICAL = "medical"
+    TRANSIT = "transit"
 
 
-class NodeCoordinates(BaseModel):
-    x: float = Field(..., description="X coordinate in spatial or sector grid (meters)")
-    y: float = Field(..., description="Y coordinate in spatial or sector grid (meters)")
-    z: float = Field(..., description="Z coordinate or subterranean level depth (meters)")
+class AssetKind(StrEnum):
+    SOURCE = "source"
+    FACILITY = "facility"
+    DEMAND_ENDPOINT = "demand_endpoint"
 
 
-class InfrastructureNode(BaseModel):
-    id: str = Field(..., description="Unique node identifier, e.g. POWER_SUB_04")
-    name: str = Field(..., description="Human-readable asset name")
-    layer: ServiceLayer = Field(..., description="Infrastructure domain layer")
-    tier: CriticalityTier = Field(..., description="Criticality priority tier")
-    sector: str = Field(..., description="Geographic or subterranean sector, e.g. Level 12 Deep")
-    population: int = Field(default=0, description="Directly dependent human population count")
-    
-    # Capacity & Buffer Dynamics
-    capacity: float = Field(default=1.0, ge=0.0, le=1.0, description="Operational capacity ratio [0=failed, 1=100%]")
-    current_buffer: float = Field(..., ge=0.0, description="Current internal buffer reserve (minutes of autonomous survival)")
-    max_buffer: float = Field(..., ge=0.0, description="Maximum buffer capacity in minutes")
-    decay_rate: float = Field(default=1.0, description="Buffer drain rate per minute when upstream supply is compromised")
-    recovery_rate: float = Field(default=1.0, description="Buffer recharge rate per minute when upstream is restored")
-    sufficiency_threshold: float = Field(default=0.8, ge=0.0, le=1.0, description="Minimum input capacity needed to prevent buffer decay")
-    
-    # State flags
-    is_failed: bool = Field(default=False, description="Whether the component has experienced an internal root failure")
-    is_isolated: bool = Field(default=False, description="Whether the component is physically isolated for repair")
-    active_intervention: Optional[str] = Field(default=None, description="ID of resource currently assisting this node")
-    
-    coords: NodeCoordinates = Field(..., description="Spatial position for transit distance calculation")
+class BufferSpec(Contract):
+    """Reserve state and rates, all in the asset's declared integer unit."""
+
+    unit: NonEmptyString
+    capacity_units: NonNegativeInt
+    initial_units: NonNegativeInt
+    depletion_units_per_minute: NonNegativeInt
+    recovery_units_per_minute: NonNegativeInt
+
+    @model_validator(mode="after")
+    def initial_reserve_fits_capacity(self) -> BufferSpec:
+        if self.initial_units > self.capacity_units:
+            raise ValueError("initial buffer reserve cannot exceed capacity")
+        return self
 
 
-class DependencyEdge(BaseModel):
-    id: str = Field(..., description="Unique edge identifier")
-    source_id: str = Field(..., description="Upstream provider node ID")
-    target_id: str = Field(..., description="Downstream dependent node ID")
-    layer: ServiceLayer = Field(..., description="Type of service transmitted along edge")
-    weight: float = Field(default=1.0, description="Relative dependency weight [0-1]")
-    min_required_capacity: float = Field(default=0.8, description="Minimum upstream capacity required for downstream health")
-    flow_delay_minutes: int = Field(default=0, description="Time delay for transmission propagation")
-    is_severed: bool = Field(default=False, description="Whether the connection line/pipe/duct is physically severed")
+class DependencyGroup(Contract):
+    """One required service; any listed provider can satisfy the group."""
+
+    id: NonEmptyString
+    service_type: ServiceType
+    provider_asset_ids: tuple[NonEmptyString, ...] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def providers_are_unique(self) -> DependencyGroup:
+        if len(set(self.provider_asset_ids)) != len(self.provider_asset_ids):
+            raise ValueError("provider_asset_ids must not contain duplicates")
+        return self
 
 
-class InterventionResource(BaseModel):
-    id: str = Field(..., description="Unique resource ID, e.g. CREW_GEN_ALPHA")
-    name: str = Field(..., description="Resource display name")
-    resource_type: ResourceType = Field(..., description="Type of capability provided")
-    base_node_id: str = Field(..., description="Starting station or depot node ID")
-    current_node_id: str = Field(..., description="Current location node ID")
-    speed_kmh: float = Field(default=40.0, description="Transit speed in transit tunnels (km/h)")
-    is_deployed: bool = Field(default=False, description="Whether currently dispatched or committed")
-    target_node_id: Optional[str] = Field(default=None, description="Assigned destination node ID")
-    dispatch_time_m: Optional[int] = Field(default=None, description="Time minute when dispatch was ordered")
-    arrival_time_m: Optional[int] = Field(default=None, description="Time minute when crew arrives at target")
-    setup_duration_m: int = Field(default=10, description="Minutes required to connect equipment after arrival")
+class InfrastructureAsset(Contract):
+    id: NonEmptyString
+    name: NonEmptyString
+    kind: AssetKind
+    provides: ServiceType
+    dependency_groups: tuple[DependencyGroup, ...] = ()
+    buffer: BufferSpec
+
+    @model_validator(mode="after")
+    def dependency_groups_are_unique(self) -> InfrastructureAsset:
+        ids = [group.id for group in self.dependency_groups]
+        if len(ids) != len(set(ids)):
+            raise ValueError("dependency group IDs must be unique within an asset")
+        if self.kind == AssetKind.SOURCE and self.dependency_groups:
+            raise ValueError("source assets cannot have dependency groups")
+        return self
 
 
-class FaultEvent(BaseModel):
-    time_m: int = Field(..., description="Minute at which the fault occurs")
-    target_node_id: str = Field(..., description="Node where the initiating fault strikes")
-    failure_type: str = Field(..., description="E.g. EXPLOSION, PIPE_RUPTURE, CONTAMINATION")
-    remaining_capacity: float = Field(default=0.0, ge=0.0, le=1.0, description="Post-fault capacity")
+class FaultEvent(Contract):
+    """An exogenous binary physical fault active over [start_minute, end_minute)."""
+
+    id: NonEmptyString
+    asset_id: NonEmptyString
+    start_minute: NonNegativeInt
+    end_minute: NonNegativeInt | None = None
+
+    @model_validator(mode="after")
+    def end_follows_start(self) -> FaultEvent:
+        if self.end_minute is not None and self.end_minute <= self.start_minute:
+            raise ValueError("end_minute must be greater than start_minute")
+        return self
 
 
-class NodeSnapshot(BaseModel):
-    node_id: str
-    capacity: float
-    current_buffer: float
-    time_to_cascade_m: float
-    is_failed: bool
-    status: str  # NOMINAL, BUFFER_DRAINING, CRITICAL_WARNING, CASCADE_FAILED, RECOVERING
+class Demand(Contract):
+    id: NonEmptyString
+    community_id: NonEmptyString
+    served_by_asset_id: NonEmptyString
+    service_type: ServiceType
+    population: PositiveInt
+    priority_weight: PositiveInt = 1
 
 
-class SimulationStep(BaseModel):
-    time_m: int
-    active_faults: List[str]
-    nodes: Dict[str, NodeSnapshot]
-    total_life_hours_saved: float
-    unserved_population: int
-    cascades_active: int
-    events_logged: List[str]
+class TravelTime(Contract):
+    asset_id: NonEmptyString
+    minutes: NonNegativeInt
 
 
-class ActionProposal(BaseModel):
-    action_id: str
-    resource_id: str
-    target_node_id: str
-    action_type: str
-    dispatch_time_m: int
-    transit_time_m: int
-    arrival_time_m: int
-    buffer_headroom_remaining_m: float
-    expected_cascades_prevented: List[str]
+class InterventionResource(Contract):
+    """A portable backup resource that can satisfy specified service inputs."""
+
+    id: NonEmptyString
+    name: NonEmptyString
+    capabilities: tuple[ServiceType, ...] = Field(min_length=1)
+    travel_times: tuple[TravelTime, ...]
+
+    @model_validator(mode="after")
+    def resource_entries_are_unique(self) -> InterventionResource:
+        if len(set(self.capabilities)) != len(self.capabilities):
+            raise ValueError("resource capabilities must not contain duplicates")
+        route_asset_ids = [route.asset_id for route in self.travel_times]
+        if len(set(route_asset_ids)) != len(route_asset_ids):
+            raise ValueError("resource travel times must not repeat an asset")
+        return self
 
 
-class RejectedAlternative(BaseModel):
-    candidate_node_id: str
-    candidate_name: str
-    rejection_code: str
-    rejection_reason: str
-    counterfactual_life_hours: float
-    delta_vs_recommended: float
+class Intervention(Contract):
+    """Backup service applied only to a matching dependency group."""
+
+    id: NonEmptyString
+    resource_id: NonEmptyString
+    target_asset_id: NonEmptyString
+    dependency_group_id: NonEmptyString
+    dispatch_minute: NonNegativeInt
+    setup_minutes: NonNegativeInt = 0
+    duration_minutes: PositiveInt | None = None
 
 
-class EquityImpact(BaseModel):
-    worst_off_sector: str
-    worst_off_deprivation_pct: float
-    baseline_worst_off_deprivation_pct: float
-    gini_index: float
-    atkinson_index: float
-    demographic_balance_note: str
+class Scenario(Contract):
+    id: NonEmptyString
+    horizon_minutes: PositiveInt
+    assets: tuple[InfrastructureAsset, ...] = Field(min_length=1)
+    demands: tuple[Demand, ...] = ()
+    faults: tuple[FaultEvent, ...] = ()
+    resources: tuple[InterventionResource, ...] = ()
+    interventions: tuple[Intervention, ...] = ()
+
+    @model_validator(mode="after")
+    def references_and_graph_are_valid(self) -> Scenario:
+        assets_by_id = _unique_by_id(self.assets, "asset")
+        demands_by_id = _unique_by_id(self.demands, "demand")
+        faults_by_id = _unique_by_id(self.faults, "fault")
+        resources_by_id = _unique_by_id(self.resources, "resource")
+        interventions_by_id = _unique_by_id(self.interventions, "intervention")
+        del demands_by_id, faults_by_id, interventions_by_id
+
+        groups_by_id: dict[str, tuple[InfrastructureAsset, DependencyGroup]] = {}
+        for asset in self.assets:
+            for group in asset.dependency_groups:
+                if group.id in groups_by_id:
+                    raise ValueError(f"duplicate dependency group ID: {group.id}")
+                groups_by_id[group.id] = (asset, group)
+
+                for provider_id in group.provider_asset_ids:
+                    provider = assets_by_id.get(provider_id)
+                    if provider is None:
+                        raise ValueError(
+                            f"dependency group {group.id} references unknown provider "
+                            f"{provider_id}"
+                        )
+                    if provider.provides != group.service_type:
+                        raise ValueError(
+                            f"provider {provider_id} supplies {provider.provides}, "
+                            f"not {group.service_type}"
+                        )
+
+        for demand in self.demands:
+            asset = assets_by_id.get(demand.served_by_asset_id)
+            if asset is None:
+                raise ValueError(
+                    f"demand {demand.id} references unknown asset "
+                    f"{demand.served_by_asset_id}"
+                )
+            if asset.provides != demand.service_type:
+                raise ValueError(
+                    f"demand {demand.id} requests {demand.service_type}, "
+                    f"but {asset.id} provides {asset.provides}"
+                )
+
+        for fault in self.faults:
+            if fault.asset_id not in assets_by_id:
+                raise ValueError(
+                    f"fault {fault.id} references unknown asset {fault.asset_id}"
+                )
+            if fault.start_minute >= self.horizon_minutes:
+                raise ValueError(
+                    f"fault {fault.id} starts at or after the scenario horizon"
+                )
+
+        for resource in self.resources:
+            route_asset_ids = {route.asset_id for route in resource.travel_times}
+            unknown_routes = route_asset_ids - set(assets_by_id)
+            if unknown_routes:
+                raise ValueError(
+                    f"resource {resource.id} has routes to unknown assets: "
+                    f"{sorted(unknown_routes)}"
+                )
+
+        seen_resource_assignments: set[str] = set()
+        for intervention in self.interventions:
+            resource = resources_by_id.get(intervention.resource_id)
+            if resource is None:
+                raise ValueError(
+                    f"intervention {intervention.id} references unknown resource "
+                    f"{intervention.resource_id}"
+                )
+            if intervention.resource_id in seen_resource_assignments:
+                raise ValueError(
+                    f"resource {intervention.resource_id} has more than one "
+                    "intervention in a scenario"
+                )
+            seen_resource_assignments.add(intervention.resource_id)
+
+            target = assets_by_id.get(intervention.target_asset_id)
+            if target is None:
+                raise ValueError(
+                    f"intervention {intervention.id} references unknown target "
+                    f"{intervention.target_asset_id}"
+                )
+            target_group = groups_by_id.get(intervention.dependency_group_id)
+            if target_group is None or target_group[0].id != target.id:
+                raise ValueError(
+                    f"intervention {intervention.id} must target a dependency group "
+                    f"belonging to {target.id}"
+                )
+            if target_group[1].service_type not in resource.capabilities:
+                raise ValueError(
+                    f"resource {resource.id} cannot provide "
+                    f"{target_group[1].service_type}"
+                )
+            travel_time = next(
+                (route.minutes for route in resource.travel_times if route.asset_id == target.id),
+                None,
+            )
+            if travel_time is None:
+                raise ValueError(
+                    f"resource {resource.id} has no travel time to {target.id}"
+                )
+            if intervention.dispatch_minute >= self.horizon_minutes:
+                raise ValueError(
+                    f"intervention {intervention.id} dispatches at or after the horizon"
+                )
+            active_from = (
+                intervention.dispatch_minute + travel_time + intervention.setup_minutes
+            )
+            if active_from >= self.horizon_minutes:
+                raise ValueError(
+                    f"intervention {intervention.id} becomes available at or after "
+                    "the horizon"
+                )
+
+        self.topological_asset_ids()
+        return self
+
+    def topological_asset_ids(self) -> tuple[str, ...]:
+        """Return a stable provider-before-dependent order; reject dependency cycles."""
+        outgoing: dict[str, set[str]] = defaultdict(set)
+        indegree = {asset.id: 0 for asset in self.assets}
+
+        for asset in self.assets:
+            for group in asset.dependency_groups:
+                for provider_id in group.provider_asset_ids:
+                    if asset.id not in outgoing[provider_id]:
+                        outgoing[provider_id].add(asset.id)
+                        indegree[asset.id] += 1
+
+        ready = deque(sorted(asset_id for asset_id, degree in indegree.items() if degree == 0))
+        ordered: list[str] = []
+        while ready:
+            asset_id = ready.popleft()
+            ordered.append(asset_id)
+            for dependent_id in sorted(outgoing[asset_id]):
+                indegree[dependent_id] -= 1
+                if indegree[dependent_id] == 0:
+                    ready.append(dependent_id)
+
+        if len(ordered) != len(indegree):
+            raise ValueError("dependency graph must be acyclic")
+        return tuple(ordered)
 
 
-class DecisionReceipt(BaseModel):
-    receipt_id: str
-    timestamp_iso: str
-    scenario_seed: int
-    incident_trigger: Dict[str, Any]
-    policy_name: str
-    recommended_action: ActionProposal
-    counterfactual_analysis: Dict[str, Any]
-    rejected_alternatives: List[RejectedAlternative]
-    equity_impact: EquityImpact
-    uncertainty_sensitivity: Dict[str, Any]
-    audit_hash: str
+class AssetSnapshot(Contract):
+    asset_id: NonEmptyString
+    service_available: bool
+    physical_fault_active: bool
+    unsatisfied_dependency_group_ids: tuple[NonEmptyString, ...]
+    buffer_units: NonNegativeInt
 
 
-class PolicyEvaluationResult(BaseModel):
-    policy: BaselinePolicy
-    essential_service_survival_rate: float
-    cascade_collapses_averted: int
-    total_life_hours_protected: float
-    unmet_critical_population_hours: float
-    worst_sector_deprivation_pct: float
-    gini_coefficient: float
-    computation_time_ms: float
-    receipt: Optional[DecisionReceipt] = None
-    timeline: List[SimulationStep]
+class TimeStep(Contract):
+    """State at the beginning of a minute; the final step is the horizon boundary."""
+
+    minute: NonNegativeInt
+    assets: tuple[AssetSnapshot, ...]
+    active_fault_ids: tuple[NonEmptyString, ...]
+    active_intervention_ids: tuple[NonEmptyString, ...]
 
 
-class BenchmarkComparison(BaseModel):
-    scenario_id: str
-    scenario_name: str
-    scenario_description: str
-    time_horizon_m: int
-    policies_evaluated: Dict[str, PolicyEvaluationResult]
-    winner_policy: str
-    lifeline_delta_life_hours: float
-    lifeline_pct_improvement_vs_greedy: float
-    lifeline_pct_improvement_vs_fcfs: float
+class DemandMetric(Contract):
+    demand_id: NonEmptyString
+    community_id: NonEmptyString
+    service_type: ServiceType
+    population: PositiveInt
+    served_minutes: NonNegativeInt
+    service_person_minutes: NonNegativeInt
+    total_service_person_minutes: PositiveInt
+    coverage_parts_per_million: PartsPerMillion
+    priority_weight: PositiveInt
+    weighted_service_person_minutes: NonNegativeInt
+
+
+class SimulationResult(Contract):
+    scenario_id: NonEmptyString
+    horizon_minutes: PositiveInt
+    steps: tuple[TimeStep, ...]
+    demand_metrics: tuple[DemandMetric, ...]
+    total_service_person_minutes: NonNegativeInt
+    total_weighted_service_person_minutes: NonNegativeInt
+    total_possible_service_person_minutes: NonNegativeInt
+
+
+def _unique_by_id(items: tuple[Contract, ...], label: str) -> dict[str, Contract]:
+    result: dict[str, Contract] = {}
+    for item in items:
+        item_id = getattr(item, "id")
+        if item_id in result:
+            raise ValueError(f"duplicate {label} ID: {item_id}")
+        result[item_id] = item
+    return result
