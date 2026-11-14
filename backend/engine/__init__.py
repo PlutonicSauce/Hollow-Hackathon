@@ -26,6 +26,17 @@ from .models import (
 )
 from .simulation import simulate
 from .optimizer import OptimizationLimitError, optimize_interventions
+from .receipts import (
+    DecisionReceipt,
+    create_decision_receipt,
+    export_receipt_json,
+    payload_sha256,
+)
+from .verification import (
+    VerificationReport,
+    VerificationStatus,
+    verify_decision_receipt,
+)
 
 __all__ = [
     "AssetKind",
@@ -36,6 +47,7 @@ __all__ = [
     "Demand",
     "DemandMetric",
     "DependencyGroup",
+    "DecisionReceipt",
     "FaultEvent",
     "InfrastructureAsset",
     "Intervention",
@@ -51,6 +63,12 @@ __all__ = [
     "SimulationResult",
     "TimeStep",
     "TravelTime",
+    "VerificationReport",
+    "VerificationStatus",
+    "create_decision_receipt",
+    "export_receipt_json",
     "optimize_interventions",
+    "payload_sha256",
     "simulate",
+    "verify_decision_receipt",
 ]

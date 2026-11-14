@@ -19,6 +19,7 @@ from engine.models import (
 )
 from engine.optimizer import OptimizationLimitError, optimize_interventions
 from engine.scenarios import (
+    fairness_tradeoff_scenario,
     downstream_priority_scenario,
     signature_scenario,
 )
@@ -137,88 +138,6 @@ def _two_target_scenario(*, include_specialist: bool = True) -> Scenario:
         ),
         faults=(FaultEvent(id="grid-down", asset_id="grid", start_minute=0),),
         resources=tuple(resources),
-    )
-
-
-def _fairness_tradeoff_scenario() -> Scenario:
-    no_reserve = BufferSpec(
-        unit="reserve_unit",
-        capacity_units=0,
-        initial_units=0,
-        depletion_units_per_minute=0,
-        recovery_units_per_minute=0,
-    )
-    grid = InfrastructureAsset(
-        id="grid",
-        name="Failed grid",
-        kind=AssetKind.SOURCE,
-        provides=ServiceType.POWER,
-        buffer=no_reserve,
-    )
-    north = InfrastructureAsset(
-        id="north",
-        name="High-demand community",
-        kind=AssetKind.DEMAND_ENDPOINT,
-        provides=ServiceType.MEDICAL,
-        dependency_groups=(
-            DependencyGroup(
-                id="north-power",
-                service_type=ServiceType.POWER,
-                provider_asset_ids=("grid",),
-            ),
-        ),
-        buffer=BufferSpec(
-            unit="reserve_unit",
-            capacity_units=1,
-            initial_units=1,
-            depletion_units_per_minute=1,
-            recovery_units_per_minute=1,
-        ),
-    )
-    south = InfrastructureAsset(
-        id="south",
-        name="Low-demand community",
-        kind=AssetKind.DEMAND_ENDPOINT,
-        provides=ServiceType.MEDICAL,
-        dependency_groups=(
-            DependencyGroup(
-                id="south-power",
-                service_type=ServiceType.POWER,
-                provider_asset_ids=("grid",),
-            ),
-        ),
-        buffer=no_reserve,
-    )
-    return Scenario(
-        id="fairness-tradeoff",
-        horizon_minutes=2,
-        assets=(grid, north, south),
-        demands=(
-            Demand(
-                id="north-need",
-                community_id="north",
-                served_by_asset_id="north",
-                service_type=ServiceType.MEDICAL,
-                population=100,
-            ),
-            Demand(
-                id="south-need",
-                community_id="south",
-                served_by_asset_id="south",
-                service_type=ServiceType.MEDICAL,
-                population=10,
-            ),
-        ),
-        faults=(FaultEvent(id="grid-down", asset_id="grid", start_minute=0),),
-        resources=(
-            _resource(
-                "generator",
-                (
-                    TravelTime(asset_id="north", travel_minutes=0),
-                    TravelTime(asset_id="south", travel_minutes=0),
-                ),
-            ),
-        ),
     )
 
 
@@ -412,7 +331,7 @@ class ExactOptimizerTests(unittest.TestCase):
 
     def test_fairness_tolerance_can_trade_primary_score_for_worst_community(self) -> None:
         result = optimize_interventions(
-            _fairness_tradeoff_scenario(),
+            fairness_tradeoff_scenario(),
             OptimizationPolicy(primary_tolerance_ppm=400_000),
         )
         self.assertEqual(result.best_primary_score, 200)

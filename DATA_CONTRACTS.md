@@ -1,4 +1,4 @@
-# LIFELINE data contracts — Milestones 1 and 2
+# LIFELINE data contracts — Milestones 1–3
 
 The runtime contracts are Pydantic v2 models in `backend/engine/models.py`. Unknown fields are rejected, models are immutable at the model level, primitive counts are strict integers, and cross-record references are checked by `Scenario`.
 
@@ -36,8 +36,37 @@ The only intervention effect is temporary backup service for a single named depe
 | `PlanSummary` | Stable plan ID, assignments, idle resources, objective, per-demand metrics, and explicit community/service coverage records. |
 | `BaselineComparison` | Baseline policy, its simulated plan, and signed primary-score and minimum-coverage deltas versus the exact recommendation. |
 | `OptimizationResult` | Policy, raw/feasible/evaluated/fairness-eligible plan counts, best primary score, selected plan, baseline comparisons, exhaustive-completion flag, and measured exact-search nanoseconds. Runtime excludes baseline evaluation. |
+| `DecisionReceipt` | Versioned payload, SHA-256 integrity record, and optional execution metadata outside the digest. |
+| `ReceiptPayload` | Complete scenario JSON, policy and resource constraints, recommended `PlanSummary`, selected `TimeStep` trace, exact-search evidence, baseline comparisons, metric definitions, assumptions, and limitations. |
+| `ReceiptSearchSummary` | Raw/feasible/evaluated/fairness-eligible counts, exhaustive flag, best and selected primary scores, primary-score loss, and fairness-tradeoff indicator. |
+| `ReceiptIntegrity` | Digest algorithm (`sha256`) and a 64-character lowercase hexadecimal digest of the canonical payload. |
+| `ReceiptExecutionMetadata` | Exact-search duration in nanoseconds. It is not part of the canonical payload or digest. |
+| `ResourceConstraints` | Dispatch minute, maximum assignments per resource/group, idling and redeployment rules, and support-duration policy. Version 1.0 is one-shot at minute 0, one assignment/resource and/group, idling allowed, no redeployment, support through the horizon. |
+| `MetricDefinition` | Stable metric name, unit, formula, and interpretation. The verifier rejects changed definitions. |
+| `VerificationReport` | `valid`, per-check statuses, independently computed payload digest, verification duration, and structured issues with category/code/message. |
+| `VerificationIssue` | One explicit failure reason categorized as schema, version, integrity, input, replay, baseline, or optimality. |
 
 All time fields are whole minutes. No floating point values are used in inputs or returned metrics. Optimizer scores and tolerance comparisons also use integers. Exhaustive search is capped by `max_candidate_plans`; exceeding the cap raises `OptimizationLimitError` rather than returning an incomplete result labeled exact.
+
+## Decision Receipt canonical form
+
+The envelope is JSON with:
+
+- `payload`: all deterministic replay and decision evidence.
+- `integrity`: `{ "algorithm": "sha256", "digest": "<64 lowercase hex characters>" }`.
+- `execution_metadata`: optional exact-search duration; excluded from the digest.
+
+Payload version fields are `schema_version`, `canonicalization_version`, `simulation_model_version`, and `optimizer_version`. Version 1 values are `1.0`, `lifeline-json-v1`, `1.0`, and `1.0`, respectively. Unsupported versions are rejected for verification rather than interpreted as the current model.
+
+Canonical payload bytes are UTF-8 JSON created from `ReceiptPayload.model_dump(mode="json")` with lexicographically sorted object keys, no insignificant whitespace (`separators=(",", ":")`), literal Unicode (`ensure_ascii=False`), and non-finite numbers prohibited (`allow_nan=False`). The envelope's digest and execution metadata are not included. Payload values use integer metrics; the versioned format does not claim full RFC 8785 compatibility.
+
+Every reported numerical outcome carries its unit/formula in `metric_definitions`: service-person-minutes, priority-weighted service-person-minutes, ppm coverage, resource-minutes, assignment counts, search plan counts, score deltas/loss, and exact-search nanoseconds. Search completeness and fairness-tradeoff indicators are booleans. Service-person metrics count per demand, not distinct people or lives saved.
+
+The scenario is recorded as a JSON object so an incomplete or malformed scenario can be reported as an input-validation failure separately from envelope-schema failure. The verifier reconstructs it with the strict Pydantic `Scenario` contract before replay. The full selected `TimeStep` trace is included; baseline traces are regenerated during verification.
+
+The verifier report has independent statuses for envelope schema, supported versions, digest integrity, input validity, replay/reproducibility, baseline consistency, and exhaustive optimality. `valid` is true only when every status passes. Unsupported semantic versions are not checked using current code.
+
+The digest covers the entire `payload`; it does not cover `integrity` or `execution_metadata`. A plain SHA-256 digest detects changes only relative to a trusted digest. It does not prove authorship, physical truth, or tamper resistance if an attacker can replace both payload and digest. A fully recomputed alternate scenario can form a valid new receipt; no signing or trusted timestamp service is included.
 
 ## Example
 
@@ -51,3 +80,5 @@ assert result.demand_metrics[0].service_person_minutes == 20
 ```
 
 Use the models' JSON validation/serialization methods when exchanging data. Do not rely on unchecked `model_copy(update=...)` for untrusted input; reconstruct or validate the complete updated scenario.
+
+For a reproducible example payload, use `engine.receipt_fixtures.signature_receipt_fixture()` and `engine.receipts.export_receipt_json()`. Verify an exported string or mapping with `engine.verification.verify_decision_receipt()`.

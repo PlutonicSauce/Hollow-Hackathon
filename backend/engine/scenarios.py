@@ -142,6 +142,244 @@ def downstream_priority_scenario() -> Scenario:
     )
 
 
+def coupled_utility_scenario() -> Scenario:
+    """Two crews must restore both pump inputs to serve air and water needs."""
+    no_reserve = BufferSpec(
+        unit="reserve_unit",
+        capacity_units=0,
+        initial_units=0,
+        depletion_units_per_minute=0,
+        recovery_units_per_minute=0,
+    )
+    return Scenario(
+        id="coupled-water-power-restoration",
+        horizon_minutes=6,
+        assets=(
+            InfrastructureAsset(
+                id="feeder",
+                name="Failed utility feeder",
+                kind=AssetKind.SOURCE,
+                provides=ServiceType.POWER,
+                buffer=no_reserve,
+            ),
+            InfrastructureAsset(
+                id="aquifer",
+                name="Interrupted aquifer supply",
+                kind=AssetKind.SOURCE,
+                provides=ServiceType.WATER,
+                buffer=no_reserve,
+            ),
+            InfrastructureAsset(
+                id="pump",
+                name="Shared deep-sector water pump",
+                kind=AssetKind.FACILITY,
+                provides=ServiceType.WATER,
+                dependency_groups=(
+                    DependencyGroup(
+                        id="pump-power",
+                        service_type=ServiceType.POWER,
+                        provider_asset_ids=("feeder",),
+                    ),
+                    DependencyGroup(
+                        id="pump-source-water",
+                        service_type=ServiceType.WATER,
+                        provider_asset_ids=("aquifer",),
+                    ),
+                ),
+                buffer=no_reserve,
+            ),
+            InfrastructureAsset(
+                id="scrubber-battery",
+                name="Finite scrubber battery",
+                kind=AssetKind.FACILITY,
+                provides=ServiceType.POWER,
+                dependency_groups=(
+                    DependencyGroup(
+                        id="battery-feeder",
+                        service_type=ServiceType.POWER,
+                        provider_asset_ids=("feeder",),
+                    ),
+                ),
+                buffer=BufferSpec(
+                    unit="reserve_unit",
+                    capacity_units=6,
+                    initial_units=6,
+                    depletion_units_per_minute=1,
+                    recovery_units_per_minute=1,
+                ),
+            ),
+            InfrastructureAsset(
+                id="air-scrubber",
+                name="Shelter ventilation scrubber",
+                kind=AssetKind.FACILITY,
+                provides=ServiceType.AIR,
+                dependency_groups=(
+                    DependencyGroup(
+                        id="scrubber-power",
+                        service_type=ServiceType.POWER,
+                        provider_asset_ids=("feeder", "scrubber-battery"),
+                    ),
+                    DependencyGroup(
+                        id="scrubber-water",
+                        service_type=ServiceType.WATER,
+                        provider_asset_ids=("pump",),
+                    ),
+                ),
+                buffer=no_reserve,
+            ),
+            InfrastructureAsset(
+                id="water-distribution",
+                name="Community water distribution",
+                kind=AssetKind.DEMAND_ENDPOINT,
+                provides=ServiceType.WATER,
+                dependency_groups=(
+                    DependencyGroup(
+                        id="distribution-pump-water",
+                        service_type=ServiceType.WATER,
+                        provider_asset_ids=("pump",),
+                    ),
+                ),
+                buffer=no_reserve,
+            ),
+        ),
+        demands=(
+            Demand(
+                id="shelter-ventilation-need",
+                community_id="deep-shelter",
+                served_by_asset_id="air-scrubber",
+                service_type=ServiceType.AIR,
+                population=40,
+                priority_weight=3,
+            ),
+            Demand(
+                id="community-water-need",
+                community_id="deep-sector",
+                served_by_asset_id="water-distribution",
+                service_type=ServiceType.WATER,
+                population=50,
+                priority_weight=2,
+            ),
+        ),
+        faults=(
+            FaultEvent(
+                id="feeder-physical-outage",
+                asset_id="feeder",
+                start_minute=0,
+            ),
+            FaultEvent(
+                id="aquifer-physical-interruption",
+                asset_id="aquifer",
+                start_minute=0,
+            ),
+        ),
+        resources=(
+            InterventionResource(
+                id="mobile-generator",
+                name="Mobile generator crew",
+                capabilities=(ServiceType.POWER,),
+                travel_times=(
+                    TravelTime(asset_id="pump", travel_minutes=0),
+                ),
+            ),
+            InterventionResource(
+                id="water-tanker",
+                name="Water tanker crew",
+                capabilities=(ServiceType.WATER,),
+                travel_times=(
+                    TravelTime(asset_id="pump", travel_minutes=1),
+                    TravelTime(asset_id="air-scrubber", travel_minutes=0),
+                    TravelTime(asset_id="water-distribution", travel_minutes=0),
+                ),
+            ),
+        ),
+    )
+
+
+def fairness_tradeoff_scenario() -> Scenario:
+    """A primary-score/fairness tradeoff fixture with two explicit communities."""
+    no_reserve = BufferSpec(
+        unit="reserve_unit",
+        capacity_units=0,
+        initial_units=0,
+        depletion_units_per_minute=0,
+        recovery_units_per_minute=0,
+    )
+    grid = InfrastructureAsset(
+        id="grid",
+        name="Failed grid",
+        kind=AssetKind.SOURCE,
+        provides=ServiceType.POWER,
+        buffer=no_reserve,
+    )
+    north = InfrastructureAsset(
+        id="north",
+        name="High-demand community",
+        kind=AssetKind.DEMAND_ENDPOINT,
+        provides=ServiceType.MEDICAL,
+        dependency_groups=(
+            DependencyGroup(
+                id="north-power",
+                service_type=ServiceType.POWER,
+                provider_asset_ids=("grid",),
+            ),
+        ),
+        buffer=BufferSpec(
+            unit="reserve_unit",
+            capacity_units=1,
+            initial_units=1,
+            depletion_units_per_minute=1,
+            recovery_units_per_minute=1,
+        ),
+    )
+    south = InfrastructureAsset(
+        id="south",
+        name="Low-demand community",
+        kind=AssetKind.DEMAND_ENDPOINT,
+        provides=ServiceType.MEDICAL,
+        dependency_groups=(
+            DependencyGroup(
+                id="south-power",
+                service_type=ServiceType.POWER,
+                provider_asset_ids=("grid",),
+            ),
+        ),
+        buffer=no_reserve,
+    )
+    return Scenario(
+        id="fairness-tradeoff",
+        horizon_minutes=2,
+        assets=(grid, north, south),
+        demands=(
+            Demand(
+                id="north-need",
+                community_id="north",
+                served_by_asset_id="north",
+                service_type=ServiceType.MEDICAL,
+                population=100,
+            ),
+            Demand(
+                id="south-need",
+                community_id="south",
+                served_by_asset_id="south",
+                service_type=ServiceType.MEDICAL,
+                population=10,
+            ),
+        ),
+        faults=(FaultEvent(id="grid-down", asset_id="grid", start_minute=0),),
+        resources=(
+            InterventionResource(
+                id="generator",
+                name="Generator",
+                capabilities=(ServiceType.POWER,),
+                travel_times=(
+                    TravelTime(asset_id="north", travel_minutes=0),
+                    TravelTime(asset_id="south", travel_minutes=0),
+                ),
+            ),
+        ),
+    )
+
+
 def _generator_routing_scenario(
     *,
     scenario_id: str,

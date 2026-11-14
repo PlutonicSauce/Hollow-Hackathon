@@ -1,8 +1,8 @@
-# LIFELINE architecture — Milestones 1 and 2
+# LIFELINE architecture — Milestones 1–3
 
 ## Purpose and boundary
 
-LIFELINE is a deterministic, tactical **decision-support prototype** for exploring how explicitly modeled service dependencies and finite reserves affect synthetic infrastructure scenarios. Milestones 1 and 2 provide validated contracts, a reproducible functional simulator, and an exhaustive optimizer for small one-shot resource assignment problems. It is not a production emergency-management system, a real-time telemetry platform, or a physical power, water, ventilation, or clinical simulator.
+LIFELINE is a deterministic, tactical **decision-support prototype** for exploring how explicitly modeled service dependencies and finite reserves affect synthetic infrastructure scenarios. Milestones 1–3 provide validated contracts, a reproducible functional simulator, an exhaustive optimizer for small one-shot resource assignment problems, and Decision Receipts with independent replay and bounded optimality verification. It is not a production emergency-management system, a real-time telemetry platform, or a physical power, water, ventilation, or clinical simulator.
 
 The implementation deliberately models service availability as binary. It does not claim that a graph-only model predicts real hydraulic flows, electrical load, air quality, patient outcomes, or lives saved.
 
@@ -16,11 +16,16 @@ backend/
     scenarios.py      Hand-calculable and optimizer demonstration scenarios
     simulation.py     Pure one-minute simulator
     optimizer.py      Exact assignment search and comparable baselines
+    receipts.py       Versioned receipt contracts and canonical SHA-256 payloads
+    verification.py   Independent replay, baseline, and exact-space verifier
+    receipt_fixtures.py Deterministic receipt fixture generator
   tests/
     test_models.py
     test_simulation.py
     test_optimizer.py
+    test_receipts.py
   pyproject.toml      Runtime dependency and package metadata
+.github/workflows/tests.yml
 ARCHITECTURE.md
 DATA_CONTRACTS.md
 TESTING.md
@@ -126,10 +131,30 @@ Baseline score and minimum-demand-coverage deltas are signed differences from th
 
 The exact result selects the pump. It provides shelter air for all four intervals (40 people × 4 × weight 3 = 480) and clinic service for three intervals (20 × 3 × weight 10 = 600), totaling 1,080. The best baseline greedy also finds the pump; static priority dispatches directly to the clinic for 920, while no intervention scores 720. Thus the signature demonstrates an upstream-vs-direct-target tradeoff, not an asserted advantage over every baseline. `downstream_priority_scenario()` changes demand weights and independently makes the clinic the best target (40,001 weighted service-person-minutes).
 
+## Decision Receipts and verification
+
+`DecisionReceipt` contains a versioned payload with the complete uncommitted `Scenario` (including assets, dependencies, fault intervals, initial reserves, demands, routes, resource constraints, and horizon), optimizer policy, recommended assignments, selected state trace, service outcomes, search counts, baseline results, metric definitions, assumptions, and limitations. Model, optimizer, schema, and canonicalization versions are explicit. The deterministic fixture generator is `engine.receipt_fixtures.signature_receipt_fixture()`.
+
+The payload digest is SHA-256 over UTF-8 bytes produced by the versioned **LIFELINE JSON v1** canonicalization: convert Pydantic values in JSON mode, serialize with lexicographically sorted object keys, compact `(",", ":")` separators, `ensure_ascii=False`, and `allow_nan=False`. Receipt models and scenario contracts use integer-valued metrics; floats are not accepted as replay inputs. The outer integrity record and optional execution metadata are not hashed. Exact-search duration and verification duration are observational metadata, not decision inputs.
+
+The verifier checks receipt structure and supported versions, reconstructs the strict `Scenario`, validates intervention constraints, recomputes the payload digest, replays the recommended plan with the declared simulator, and independently derives demand/objective metrics from the resulting state trace. It separately reconstructs each baseline and independently enumerates compatible one-shot assignments, recomputes the best primary score and fairness-eligible set, checks deterministic tie-breaking, and compares counts and selected plan. It does **not** call `optimize_interventions()`; the verifier uses a separately structured candidate model and enumerator.
+
+The verifier deliberately shares the versioned `simulate()` state-transition implementation with the optimizer. A passing replay therefore establishes internal consistency with that simulator, not physical accuracy or independent validation of its rules. Hand-calculated M1 and optimization oracles are retained to detect errors common to both paths. Verification reports distinguish schema, version, digest integrity, input validity, replay/reproducibility, baseline, and optimality failures.
+
+The digest covers every replay-critical payload field, but an ordinary hash is not an authorship signature. It detects changes only relative to a trusted digest. An attacker able to replace both payload and digest can produce a new internally consistent hash; replay and independent enumeration reject unsupported outcome/optimality claims, but cannot prove who created a fully recomputed receipt or whether its scenario describes reality. No signature, external timestamp, or public-key infrastructure is implemented.
+
+## Stronger multi-resource demonstration
+
+`coupled_utility_scenario()` models a failed feeder and interrupted aquifer supply feeding one pump that requires both power and water. A generator and water tanker each have limited assignments; the tanker reaches the pump after one minute. The pump serves both a shelter scrubber and community water distribution. A finite scrubber battery preserves air service during the short planning horizon.
+
+There are eight candidate plans, all eight feasible and evaluated. The exact plan assigns the generator to `pump-power` and the tanker to `pump-source-water`; pump service resumes at minute 1. Its score is 1,100 weighted service-person-minutes: 40 shelter occupants × 5 served minutes × weight 3 = 600, plus 50 water recipients × 5 × weight 2 = 500. No intervention scores 0; static direct-priority and one-step greedy each score 720 by assigning the tanker directly to the scrubber water input. Neither baseline combines the two individually non-beneficial pump-input assignments. This is a finite-resource complementarity case, not evidence that exact search always beats greedy. The signature case still ties greedy, and the fairness fixture separately shows a configured aggregate-score tradeoff.
+
+The fairness result is a policy choice, not an ethically objective answer. In the two-community fixture, best primary score is 200; with a human-selected 400,000 ppm relative tolerance, the result selects 120 primary points and improves worst-demand coverage from 0 to 500,000 ppm. Stakeholders must choose the tolerance and weights; neither is calibrated as a universal ethical rule.
+
 ## Remaining model boundaries
 
 The graph has binary service, AND dependency groups, OR providers, and DAG-only propagation. It has no flow conservation, load/capacity sharing, partial service, stochastic failures, repair actions, resource redeployment, fuel consumption, multi-step dispatch, or calibrated physical reserves. Travel/setup are deterministic integer minutes. Community coverage is only as complete as the explicit demand records and weights. Scores are service exposure and policy arithmetic, never lives saved, avoided casualties, or validated operational recommendations.
 
 ## Later milestones
 
-Decision Receipts must later include all replay inputs and independently verifiable simulation and optimization steps; a digest alone is not proof of optimality or model validity. UI, deployment, uncertainty modeling, physical repair actions, and real network datasets remain outside these milestones.
+The next approved milestone may build a frontend that displays receipt inputs, action assignments, minute-by-minute replay, fairness/score tradeoffs, verification findings, and model limits. It should not imply that a valid receipt proves real-world accuracy or lives saved. Cloud deployment, uncertainty modeling, physical repair actions, and real network datasets remain out of scope until separately approved.
