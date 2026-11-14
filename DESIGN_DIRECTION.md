@@ -160,7 +160,7 @@ On mobile, the response and comparison panels come **before** the graph. The rec
 
 2. **The graph is visible at first scroll.** Two fault nodes are red. The pump in the middle is red (both inputs missing). The two demand endpoints are red. The cascade is obvious.
 
-3. **The right column shows the recommendation.** Not a number first—the assignments first: "Mobile generator crew → pump power input. Water tanker crew → pump water input." Then the number. Then the comparison showing that each crew alone scores 720, together scores 1,100.
+3. **The right column shows the recommendation.** Not a number first—the assignments first: "Mobile generator crew → pump power input. Water tanker crew → pump water input." Then the score context. Then the comparison showing that a direct response protects ventilation (720), while coordinating both crews restores the pump and protects both ventilation and water (1,100).
 
 4. **The user understands the complementarity.** The graph and comparison are side-by-side. No scrolling required to see why the plan beats the alternatives.
 
@@ -224,11 +224,11 @@ The comparison block should be ~180px tall. It must be fully visible without scr
 
 Format:
 ```
-Two crews restore the pump together.
+Coordinating separate crews at Shared deep-sector water pump provides both missing inputs.
 Generator → pump power   (arrives minute 0)
 Tanker → pump water      (arrives minute 1)
 
-Each crew alone scores 720. Together: 1,100.
+A direct response protects ventilation. Coordinating both crews protects ventilation and water.
 ```
 
 The RecommendationInsight component logic is correct. The presentation just needs to express it as a human sentence at the top of the assignments, not as a labeled box below them.
@@ -289,7 +289,7 @@ A judge can open the page and within 30 seconds answer:
 1. **What happened?** The incident description in the header states it in plain language.
 2. **What is affected?** Two red demand-endpoint nodes are visible in the graph without scrolling (or at the top of scroll on mobile).
 3. **What is the response?** The crew list and comparison bars are visible in the right column without scrolling (desktop).
-4. **Why does the response work?** The sentence "Each crew alone scores 720. Together: 1,100." is visible directly below the assignments.
+4. **Why does the response work?** The explanation showing that a direct response protects only ventilation while coordinated crew dispatch restores shared pump service for both ventilation and water is clearly stated.
 5. **Can I trust it?** The "Verify this decision" button is in the receipt section at the bottom. One click returns a pass/fail.
 
 **Measurable implementation checks:**

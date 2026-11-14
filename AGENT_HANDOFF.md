@@ -51,6 +51,17 @@ The GitHub workflow runs `python -m unittest discover -s tests -v` on Python 3.1
 - The project dev launcher requires `/Volumes/XcodeSSD/Hollow-Hackathon` and `/Volumes/XcodeSSD/Hollow-DevData`; cache/temp paths do not silently fall back to the internal volume.
 - Copilot session history and VS Code user-data are controlled by the active editor launch configuration, not by the LIFELINE dev launcher. Verify those separately; this environment may still keep session state internally.
 
+## Milestone 5: The Field Dossier Redesign
+
+Milestone 5 implements the approved creative direction reset to **The Field Dossier**:
+- **Design System:** Engineered IBM Plex Sans and IBM Plex Mono typography, warm coal (`#0f0e0c`), amber (`#c8a86b`), sage (`#8aab78`), and clay-red (`#c26b5e`) palette. No gradients, glowing decorative dots, or generic SaaS card borders.
+- **Information Architecture:** Incident header with plain-language fault statement and metadata; central System topology graph on the left; sticky Coordinated Response panel on the right with crew dispatches, dynamic complementarity explanation, and immediately visible 4-plan comparison bars (0 vs 720 vs 720 vs 1,100 wSPM).
+- **Mobile First-Screen Flow:** The recommended plan, crew dispatches, and comparison bars elevate above the topology map on small viewports so the core decision is understood immediately.
+- **Graph Differentiation:** Structural roles for Source infrastructure, Shared Hubs, and Community Demand Endpoints (concentric status rings and truthful dashed backup edges).
+- **Truthful Complementarity:** Accurately explains that the pump requires both power and water. Direct response preserves ventilation (720 wSPM), whereas coordinating both crews restores the shared pump, protecting both ventilation and community water (1,100 wSPM). No hardcoded outcomes or false claims.
+- **Decision Receipt:** Clean digest row with one-click verification returning 7 explicit check statuses, collapsible payload inspection, and expandable model assumptions/limitations.
+- **Verification:** All 60 Python backend tests pass. All 8 frontend Vitest tests pass. TypeScript builds without errors.
+
 ## Next milestone boundary
 
-Milestone 4 is limited to the current local vertical slice. Do not add authentication, external data, cloud deployment, operational claims, or unrelated product areas without approval. The prior `3091d96` historical Copilot co-author trailer is not to be rewritten; future commits must have only the configured user's author/committer identity and no attribution footer.
+Milestone 4/5 is limited to the current local vertical slice. Do not add authentication, external data, cloud deployment, operational claims, or unrelated product areas without approval. The prior `3091d96` historical Copilot co-author trailer is not to be rewritten; future commits must have only the configured user's author/committer identity and no attribution footer.

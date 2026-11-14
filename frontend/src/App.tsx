@@ -287,50 +287,46 @@ function App() {
     <main className="app-shell">
       <header className="topbar">
         <a className="brand" href="#" aria-label="LIFELINE home">
-          <span className="brand-mark" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </span>
+          <span className="brand-mark" aria-hidden="true"><span /><span /><span /></span>
           <span>LIFELINE</span>
         </a>
-        <div className="topbar-center">
-          <span className="workspace-dot" />
-          HOLLOW · INCIDENT DESK
-        </div>
         <div className="topbar-right">
-          <span className="model-badge">DETERMINISTIC MODEL</span>
-          <span className="live-indicator">
-            <span /> LOCAL SIMULATION
-          </span>
+          <label htmlFor="scenario-select" className="scenario-label">Active scenario</label>
+          <select id="scenario-select" value={scenarioKey} onChange={(e) => changeScenario(e.target.value)} disabled={loading}>
+            {choices.map((item) => <option key={item.key} value={item.key}>{item.name}</option>)}
+          </select>
         </div>
       </header>
 
       <div className="content">
-        <section className="page-heading">
-          <div>
-            <div className="eyebrow"><span className="eyebrow-line" /> EMERGENCY RESPONSE / DECISION SUPPORT</div>
-            <h1>See the cascade.<br /><span>Choose what holds.</span></h1>
-            <p className="intro">
-              Explore how a failure moves through the Hollow, then compare resource plans
-              against the same deterministic simulation.
-            </p>
+        <div className="incident-header">
+          <div className="incident-fault-line">
+            <span className="incident-fault-icon" aria-hidden="true"><Icon name="bolt" /></span>
+            <div>
+              <h1 className="incident-title-text">
+                {activeFaults.length > 0
+                  ? activeFaults.map(fault => {
+                      const asset = scenario?.assets.find(a => a.id === fault.asset_id);
+                      return asset ? `${asset.name} offline` : fault.id.replaceAll('-', ' ');
+                    }).join(' · ')
+                  : (choice?.name ?? scenario?.id ?? 'Loading incident…')}
+              </h1>
+              <p className="incident-summary">
+                {affectedServices.length > 0
+                  ? `Affected services: ${affectedServices.join(', ')}`
+                  : (choice?.description ?? '')}
+              </p>
+            </div>
           </div>
-          <div className="incident-selector">
-            <label htmlFor="scenario-select">ACTIVE SCENARIO</label>
-            <select
-              id="scenario-select"
-              value={scenarioKey}
-              onChange={(event) => changeScenario(event.target.value)}
-              disabled={loading}
-            >
-              {choices.map((item) => (
-                <option key={item.key} value={item.key}>{item.name}</option>
-              ))}
-            </select>
-            <p>{choice?.description ?? "Loading scenario details…"}</p>
+          <div className="incident-meta">
+            <span><strong>{scenario?.horizon_minutes ?? '—'}</strong> <span className="meta-unit">min horizon</span></span>
+            <span><strong>{scenario?.assets.length ?? '—'}</strong> <span className="meta-unit">assets</span></span>
+            <span><strong>{scenario?.resources.length ?? '—'}</strong> <span className="meta-unit">response teams</span></span>
+            <span className="incident-model-status">
+              {loading ? 'Computing…' : resultsStale ? 'Inputs changed' : 'Model ready'}
+            </span>
           </div>
-        </section>
+        </div>
 
         {error && (
           <div className="error-banner" role="alert">
@@ -351,43 +347,10 @@ function App() {
           </div>
         )}
 
-        <section className="incident-strip" aria-label="Incident summary">
-          <div className="incident-title">
-            <span className="incident-icon" aria-hidden="true"><Icon name="bolt" /></span>
-            <div>
-              <span className="eyebrow">WHAT HAPPENED</span>
-              <strong>
-                {activeFaults.map((fault) => {
-                  const asset = scenario?.assets.find((item) => item.id === fault.asset_id);
-                  return asset ? `${asset.provides} · ${asset.name}` : fault.id.replaceAll("-", " ");
-                }).join("  ·  ") || "No active physical faults"}
-              </strong>
-              <small>
-                {affectedServices.length
-                  ? `Unavailable modeled services: ${affectedServices.join(", ")}`
-                  : "No modeled demand currently unavailable"}
-              </small>
-            </div>
-          </div>
-          <div className="incident-fact"><span>HORIZON</span><strong>{scenario?.horizon_minutes ?? "—"} <small>min</small></strong></div>
-          <div className="incident-fact"><span>ASSETS</span><strong>{scenario?.assets.length ?? "—"}</strong></div>
-          <div className="incident-fact"><span>RESPONSE TEAMS</span><strong>{scenario?.resources.length ?? "—"}</strong></div>
-          <div className="incident-status">
-            <span className="status-pulse" />
-            {loading ? "RECOMPUTING" : resultsStale ? "INPUTS CHANGED" : "MODEL READY"}
-          </div>
-        </section>
-
-        <div className="section-label">
-          <span>01</span> INFRASTRUCTURE STATE
-          <span className="section-label-right">SERVICE AVAILABILITY AT MINUTE {minute}</span>
-        </div>
-
         <section className="main-grid">
           <div className="panel network-panel">
             <div className="panel-heading">
               <div>
-                <span className="panel-kicker">DEPENDENCY MAP</span>
                 <h2>System topology</h2>
               </div>
               <div className="legend" aria-label="Asset status legend">
@@ -424,7 +387,6 @@ function App() {
           <aside className={`panel response-panel ${resultsStale ? "results-stale" : ""}`}>
             <div className="panel-heading response-heading">
               <div>
-                <span className="panel-kicker">COMPUTED RESPONSE</span>
                 <h2>Recommended plan</h2>
               </div>
               {evaluation && (
@@ -475,6 +437,61 @@ function App() {
                     <div className="idle-note">No beneficial dispatch in this scenario.</div>
                   )}
                 </div>
+
+                {/* Inline comparison section — immediately below crew assignments */}
+                <div className="inline-comparison">
+                  <div className="inline-comparison-heading">
+                    <span className="inline-comparison-label">Same incident — different plans</span>
+                    <span className="inline-comparison-unit">weighted service-person-minutes</span>
+                  </div>
+                  <div className="comparison-list">
+                    {[
+                      { key: 'no_intervention', label: 'No response', score: evaluation.no_intervention_simulation.total_weighted_service_person_minutes, selected: false },
+                      ...evaluation.optimization.baseline_comparisons
+                        .filter(item => item.baseline !== 'no_intervention')
+                        .map(item => ({
+                          key: item.baseline,
+                          label: item.baseline === 'static_priority' ? 'Static priority' : 'Greedy response',
+                          score: item.plan.objective.weighted_service_person_minutes,
+                          selected: false,
+                        })),
+                      { key: 'optimized', label: 'LIFELINE exact', score: evaluation.optimization.selected_plan.objective.weighted_service_person_minutes, selected: true },
+                    ].map(item => {
+                      const peak = Math.max(1, evaluation.optimization.best_primary_score, evaluation.no_intervention_simulation.total_weighted_service_person_minutes);
+                      return (
+                        <div className={`comparison-row ${item.selected ? 'comparison-selected' : ''}`} key={item.key}>
+                          <span className="comparison-label">{item.label}{item.selected && <small>BEST</small>}</span>
+                          <div className="comparison-track"><span style={{ width: `${(item.score / peak) * 100}%` }} /></div>
+                          <strong>{formatNumber(item.score)}</strong>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="comparison-footnote">Same scenario, resources, horizon, and simulator. Scores are modeled service exposure — not lives saved.</p>
+                </div>
+
+                {/* Community outcomes in right column */}
+                <div className="inline-impact">
+                  <div className="inline-comparison-heading">
+                    <span className="inline-comparison-label">Community service outcomes</span>
+                    <span className="inline-comparison-unit">recommended plan</span>
+                  </div>
+                  <div className="impact-list">
+                    {evaluation.optimization.selected_plan.demand_metrics.map((metric) => (
+                      <div className="impact-row" key={metric.demand_id}>
+                        <div className="impact-name">
+                          <span className={`service-icon service-${metric.service_type}`}><Icon name={metric.service_type === 'water' ? 'drop' : 'air'} /></span>
+                          <div><strong>{metric.community_id.replaceAll('-', ' ')}</strong><span>{metric.service_type} · {formatNumber(metric.population)} modeled people</span></div>
+                        </div>
+                        <div className="impact-coverage">
+                          <strong>{(metric.coverage_parts_per_million / 10_000).toFixed(1)}<small>%</small></strong>
+                          <div><span style={{ width: `${metric.coverage_parts_per_million / 10_000}%` }} /></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="search-proof">
                   <span className={evaluation.optimization.exhaustive_search_complete ? "" : "search-limited"}>
                     <Icon name={evaluation.optimization.exhaustive_search_complete ? "check" : "warning"} />
@@ -494,7 +511,7 @@ function App() {
 
         <section className="timeline-panel panel">
           <div className="timeline-title">
-            <div><span className="panel-kicker">REPLAY</span><h2>Minute-by-minute state</h2></div>
+            <div><h2>Minute-by-minute state</h2></div>
             <div className="replay-controls">
               <label htmlFor="plan-select">SHOWING</label>
               <select id="plan-select" value={planKey} onChange={(event) => setPlanKey(event.target.value as PlanKey)} disabled={!evaluation}>
@@ -551,84 +568,9 @@ function App() {
           </div>
         </section>
 
-        <div className={`lower-grid ${resultsStale ? "results-stale" : ""}`}>
-          <section className="panel comparison-panel">
-            <div className="panel-heading">
-              <div><span className="panel-kicker">COUNTERFACTUALS</span><h2>Same incident. Different plans.</h2></div>
-              <span className="unit-note">weighted service-person-minutes</span>
-            </div>
-            {evaluation ? (
-              <div className="comparison-list">
-                {[
-                  {
-                    key: "no_intervention",
-                    label: "No intervention",
-                    score: evaluation.no_intervention_simulation.total_weighted_service_person_minutes,
-                    selected: false,
-                  },
-                  ...evaluation.optimization.baseline_comparisons
-                    .filter((item) => item.baseline !== "no_intervention")
-                    .map((item) => ({
-                      key: item.baseline,
-                      label: item.baseline === "static_priority" ? "Static priority" : "Greedy",
-                      score: item.plan.objective.weighted_service_person_minutes,
-                      selected: false,
-                    })),
-                  {
-                    key: "optimized",
-                    label: "LIFELINE exact",
-                    score: evaluation.optimization.selected_plan.objective.weighted_service_person_minutes,
-                    selected: true,
-                  },
-                ].map((item) => {
-                  const peak = Math.max(
-                    1,
-                    evaluation.optimization.best_primary_score,
-                    evaluation.no_intervention_simulation.total_weighted_service_person_minutes,
-                  );
-                  return (
-                    <div className={`comparison-row ${item.selected ? "comparison-selected" : ""}`} key={item.key}>
-                      <span className="comparison-label">{item.label}{item.selected && <small>RECOMMENDED</small>}</span>
-                      <div className="comparison-track"><span style={{ width: `${(item.score / peak) * 100}%` }} /></div>
-                      <strong>{formatNumber(item.score)}</strong>
-                    </div>
-                  );
-                })}
-                <p className="comparison-footnote">
-                  Every plan uses the same scenario, resources, horizon, and simulator. Scores are modeled service exposure—not lives saved.
-                </p>
-              </div>
-            ) : <div className="map-placeholder">{loading ? "Calculating alternatives…" : "Comparison appears after evaluation."}</div>}
-          </section>
-
-          <section className="panel impact-panel">
-            <div className="panel-heading">
-              <div><span className="panel-kicker">MODELED NEEDS</span><h2>Community service outcomes</h2></div>
-              <span className="unit-note">recommended plan</span>
-            </div>
-            {evaluation ? (
-              <div className="impact-list">
-                {evaluation.optimization.selected_plan.demand_metrics.map((metric) => (
-                  <div className="impact-row" key={metric.demand_id}>
-                    <div className="impact-name">
-                      <span className={`service-icon service-${metric.service_type}`}><Icon name={metric.service_type === "water" ? "drop" : "air"} /></span>
-                      <div><strong>{metric.community_id.replaceAll("-", " ")}</strong><span>{metric.service_type} · {formatNumber(metric.population)} modeled people</span></div>
-                    </div>
-                    <div className="impact-coverage">
-                      <strong>{(metric.coverage_parts_per_million / 10_000).toFixed(1)}<small>%</small></strong>
-                      <div><span style={{ width: `${metric.coverage_parts_per_million / 10_000}%` }} /></div>
-                      <small>{formatNumber(metric.service_person_minutes)} / {formatNumber(metric.total_service_person_minutes)} person-service-min</small>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : <div className="map-placeholder">Demand outcomes appear after evaluation.</div>}
-          </section>
-        </div>
-
         <section className="panel controls-panel" aria-labelledby="conditions-heading">
           <div className="controls-heading">
-            <div><span className="panel-kicker">WHAT IF</span><h2 id="conditions-heading">Change the response conditions</h2></div>
+            <div><h2 id="conditions-heading">Change the response conditions</h2></div>
             <button className="secondary-button" type="button" onClick={recalculate} disabled={loading || !scenario}>
               {loading ? "Evaluating…" : resultsStale ? "Apply changes & recompute" : "Recompute current plan"}
             </button>
@@ -744,20 +686,10 @@ function RecommendationInsight({
   const sharedAsset = sharedTarget
     ? scenario.assets.find((asset) => asset.id === sharedTarget[0])
     : undefined;
-  const explanation = sharedAsset && sharedTarget
-    ? `Separate crews cover different inputs to ${sharedAsset.name}: ${sharedTarget[1]
-      .filter((assignment, index, assignments) =>
-        assignments.findIndex((item) => item.groupId === assignment.groupId) === index,
-      )
-      .map((assignment) => assignment.description)
-      .join("; ")}.`
-    : "The selected plan follows the declared service objective and fairness policy.";
   const comparisons = evaluation.optimization.baseline_comparisons.filter(
     (item) => item.baseline === "static_priority" || item.baseline === "greedy",
   );
-  const baselineNames = comparisons.map((item) =>
-    item.baseline === "static_priority" ? "static-priority" : "greedy",
-  );
+
   const improvedServices = [
     ...new Set(
       plan.demand_metrics
@@ -775,21 +707,66 @@ function RecommendationInsight({
     ),
   ];
   const serviceImpact = improvedServices.length > 0
-    ? ` Modeled service delivery for ${improvedServices.join(" and ")} is higher than in the ${baselineNames.join(" and ")} plans.`
+    ? ` Modeled service delivery for ${improvedServices.join(" and ")} is higher than in the ${comparisons.map((c) => c.baseline === "static_priority" ? "static-priority" : "greedy").join(" and ")} plans.`
     : "";
+
+  const baselineServedServices = [
+    ...new Set(
+      comparisons.flatMap((c) =>
+        c.plan.demand_metrics
+          .filter((m) => m.service_person_minutes > 0)
+          .map((m) => m.service_type),
+      ),
+    ),
+  ];
+  const planServedServices = [
+    ...new Set(
+      plan.demand_metrics
+        .filter((m) => m.service_person_minutes > 0)
+        .map((m) => m.service_type),
+    ),
+  ];
+
+  let explanation: string;
+  if (sharedAsset && sharedTarget) {
+    if (
+      baselineServedServices.length > 0 &&
+      planServedServices.length > baselineServedServices.length
+    ) {
+      explanation = `A direct response protects ${baselineServedServices.join(" and ")}. Coordinating crews at ${sharedAsset.name} provides both missing inputs, protecting ${planServedServices.join(" and ")}.`;
+    } else {
+      explanation = `Coordinating separate crews at ${sharedAsset.name} provides both missing inputs.`;
+    }
+  } else {
+    explanation = "The selected plan follows the declared service objective and fairness policy.";
+  }
+
+  const bestBaseline = comparisons.length > 0
+    ? comparisons.reduce((best, cur) =>
+        cur.plan.objective.weighted_service_person_minutes >
+        best.plan.objective.weighted_service_person_minutes
+          ? cur
+          : best,
+      )
+    : null;
 
   return (
     <section className="recommendation-insight" aria-label="Why this plan">
-      <span className="panel-kicker">WHY THIS PLAN</span>
       <p>{explanation}{serviceImpact}</p>
-      <div className="insight-comparisons">
-        {comparisons.map((item) => (
-          <div key={item.baseline}>
-            <span>vs {item.baseline === "static_priority" ? "static priority" : "greedy"}</span>
-            <strong>{formatSigned(item.primary_score_delta)} wSPM</strong>
-          </div>
-        ))}
-      </div>
+      {bestBaseline && (
+        <div className="insight-score-row">
+          <span>
+            Best baseline: <strong>{formatNumber(bestBaseline.plan.objective.weighted_service_person_minutes)}</strong> wSPM
+          </span>
+          <span className="insight-arrow">→</span>
+          <span>
+            LIFELINE: <strong>{formatNumber(plan.objective.weighted_service_person_minutes)}</strong> wSPM
+          </span>
+          <span className="insight-delta">
+            ({formatSigned(plan.objective.weighted_service_person_minutes - bestBaseline.plan.objective.weighted_service_person_minutes)} wSPM)
+          </span>
+        </div>
+      )}
       <small>Backend-computed score difference under this synthetic model.</small>
     </section>
   );
@@ -942,14 +919,14 @@ function DependencyMap({
                     ? "buffered"
                     : "online";
             const statusLabel = status === "faulted"
-              ? "PHYSICAL FAULT"
+              ? "physical fault"
               : status === "offline"
-                ? "SERVICE UNAVAILABLE"
+                ? "service unavailable"
                 : status === "backup"
-                  ? `TEMP BACKUP · ${backupServices.join(" + ")}`
+                  ? `on backup · ${backupServices.join(" + ")}`
                   : status === "buffered"
-                    ? `RESERVE · ${state.buffer_units} ${asset.buffer.unit}`
-                    : "SERVICE WORKING";
+                    ? `on reserve · ${state.buffer_units} ${asset.buffer.unit}`
+                    : "service working";
             const inputs = [
               ...new Set(asset.dependency_groups.map((group) => group.service_type)),
             ];
@@ -958,12 +935,28 @@ function DependencyMap({
               Math.max(15, Math.floor((layout.nodeWidth - 24) / 7.2)),
             );
             const nameTop = -8 - (nameLines.length - 1) * 7;
+            const roleClass = asset.kind === "source"
+              ? "node-source"
+              : demandAssets.has(asset.id)
+                ? "node-demand"
+                : "node-hub";
+
             return (
               <g
                 key={asset.id}
                 transform={`translate(${position.x}, ${position.y})`}
-                className={`asset-node node-${status}`}
+                className={`asset-node node-${status} ${roleClass}`}
               >
+                {demandAssets.has(asset.id) && (
+                  <rect
+                    className="demand-outer-ring"
+                    x={-layout.nodeWidth / 2 - 3}
+                    y={-layout.nodeHeight / 2 - 3}
+                    width={layout.nodeWidth + 6}
+                    height={layout.nodeHeight + 6}
+                    rx="12"
+                  />
+                )}
                 <rect
                   x={-layout.nodeWidth / 2}
                   y={-layout.nodeHeight / 2}
@@ -1136,7 +1129,7 @@ function ReceiptInspector({
   return (
     <section className={`panel receipt-panel ${className}`}>
       <div className="receipt-heading">
-        <div><span className="panel-kicker">REPRODUCIBILITY</span><h2>Decision Receipt</h2></div>
+        <div><h2>Decision Receipt</h2></div>
         {evaluation && <span className="digest-label"><span className="digest-dot" /> SHA-256 · {evaluation.receipt.integrity.digest.slice(0, 12)}…</span>}
       </div>
       {evaluation ? (
@@ -1193,11 +1186,9 @@ function ReceiptInspector({
           )}
           <div className="assumptions">
             <div>
-              <span className="panel-kicker">MODEL ASSUMPTIONS</span>
               <ul>{evaluation.receipt.payload.assumptions.map((item) => <li key={item}>{item}</li>)}</ul>
             </div>
             <div>
-              <span className="panel-kicker">LIMITATIONS</span>
               <ul>{evaluation.receipt.payload.limitations.map((item) => <li key={item}>{item}</li>)}</ul>
             </div>
           </div>

@@ -277,7 +277,7 @@ describe("LIFELINE incident experience", () => {
     await user.tab();
     expect(screen.getByRole("link", { name: "LIFELINE home" })).toHaveFocus();
     await user.tab();
-    expect(screen.getByLabelText("ACTIVE SCENARIO")).toHaveFocus();
+    expect(screen.getByLabelText(/active scenario/i)).toHaveFocus();
     await user.tab();
     expect(screen.getByLabelText("SHOWING")).toHaveFocus();
   });
