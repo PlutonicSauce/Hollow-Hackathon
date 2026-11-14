@@ -1,0 +1,28 @@
+{
+  "name": "lifeline-interactive",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node dev.mjs",
+    "dev:ui": "vite --host 127.0.0.1",
+    "build": "tsc -p tsconfig.json && vite build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.0.0",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.1.12",
+    "vite": "^7.0.0"
+  }
+}

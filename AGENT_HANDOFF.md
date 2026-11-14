@@ -2,15 +2,11 @@
 
 ## Current milestone
 
-Milestone 3 implements versioned Decision Receipts, canonical SHA-256 payloads, deterministic receipt fixtures, independent replay/metric/baseline/exhaustive-plan verification, an interacting multi-resource scenario, expanded tests, and a GitHub Actions workflow. Read `ARCHITECTURE.md`, `DATA_CONTRACTS.md`, and `TESTING.md` before changing semantics.
+Milestone 4 adds a local interactive React/TypeScript application and a standard-library Python API around the existing engine. The API returns real simulation traces, exact optimization/baseline results, Decision Receipts, and verifier reports. Read `README.md`, `ARCHITECTURE.md`, `DATA_CONTRACTS.md`, and `TESTING.md` before changing semantics.
 
-## Do not implement without approval
+## Scope boundary
 
-- Frontend, dashboards, API server, database, or deployment
-- Authentication, PDF export, LLM decision support, GIS, or sensor integrations
-- Physical repair actions or resource reuse
-- Real-world telemetry, network datasets, or claims of operational validity
-- Any Milestone 4 work until explicitly approved
+Milestone 4's local API and interactive frontend are implemented. Do not start a later milestone or add authentication, PDF export, LLM decision support, GIS, sensor integrations, physical repair actions, resource reuse, real-world telemetry, network datasets, or operational claims without approval.
 
 ## Required invariants
 
@@ -46,6 +42,15 @@ The GitHub workflow runs `python -m unittest discover -s tests -v` on Python 3.1
 - The fairness fixture has a 200-point primary optimum. A configured 400,000 ppm tolerance selects 120 points and raises minimum explicit-demand coverage to 500,000 ppm. This is a declared policy tradeoff, not an ethical conclusion.
 - Hand-calculated trace expectations remain the oracle for the shared simulator. The verifier separately derives outcomes from its replay trace and independently enumerates the bounded plan space.
 
+## Milestone 4 invariants
+
+- The browser is a presentation/input layer; all service outcomes, plan scores, baselines, traces, receipts, and verification reports come from the Python engine.
+- User-edited resource availability and travel times are sent through `Scenario.model_validate` before evaluation.
+- The displayed weighted objective is never called lives saved.
+- The local API binds to 127.0.0.1. Do not expose it on a public interface without a separate security review and authentication design.
+- The project dev launcher requires `/Volumes/XcodeSSD/Hollow-Hackathon` and `/Volumes/XcodeSSD/Hollow-DevData`; cache/temp paths do not silently fall back to the internal volume.
+- Copilot session history and VS Code user-data are controlled by the active editor launch configuration, not by the LIFELINE dev launcher. Verify those separately; this environment may still keep session state internally.
+
 ## Next milestone boundary
 
-Only begin Milestone 4 after explicit approval. The proposed scope is a focused interactive demo that displays the complete scenario, recommended assignments, minute-by-minute replay, baseline comparisons, fairness tradeoffs, receipt digest, verifier statuses, and explicit model limitations. Do not imply lives saved or operational validity. The prior `3091d96` historical Copilot co-author trailer is not to be rewritten; future commits must have only the configured user's author/committer identity and no attribution footer.
+Milestone 4 is limited to the current local vertical slice. Do not add authentication, external data, cloud deployment, operational claims, or unrelated product areas without approval. The prior `3091d96` historical Copilot co-author trailer is not to be rewritten; future commits must have only the configured user's author/committer identity and no attribution footer.

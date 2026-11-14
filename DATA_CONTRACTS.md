@@ -82,3 +82,19 @@ assert result.demand_metrics[0].service_person_minutes == 20
 Use the models' JSON validation/serialization methods when exchanging data. Do not rely on unchecked `model_copy(update=...)` for untrusted input; reconstruct or validate the complete updated scenario.
 
 For a reproducible example payload, use `engine.receipt_fixtures.signature_receipt_fixture()` and `engine.receipts.export_receipt_json()`. Verify an exported string or mapping with `engine.verification.verify_decision_receipt()`.
+
+## Milestone 4 local HTTP API
+
+The loopback-only server in `backend/engine/api.py` exposes:
+
+| Route | Request | Response |
+|---|---|---|
+| `GET /api/health` | none | `{ "status": "ok" }` |
+| `GET /api/scenarios` | none | Scenario key, display name, and description catalog |
+| `GET /api/scenarios/{key}` | known catalog key | Complete validated `Scenario` JSON |
+| `POST /api/evaluate` | `{ "scenario": Scenario, "policy"?: OptimizationPolicy }` | Scenario, no-intervention `SimulationResult`, `OptimizationResult`, `DecisionReceipt`, and plan-keyed `TimeStep[]` replay traces |
+| `POST /api/verify` | `{ "receipt": DecisionReceipt }` (or receipt object) | `VerificationReport` from the existing independent verifier |
+
+`/api/evaluate` rejects malformed or invalid scenario/policy data with HTTP 422 and includes bounded-search failures as `search_limit_exceeded`. Malformed JSON is HTTP 400; oversized request bodies are rejected. The API computes no alternate domain metrics: plan scores and demand outcomes are serialized directly from engine outputs, and replay traces come from `simulate()`.
+
+The browser can change available resources by omitting them from the scenario resource tuple, edit integer route travel times, and set the existing fairness tolerance. The updated scenario is validated by the same `Scenario` contract before optimization. No browser-side result is accepted as evidence; receipt verification replays and enumerates through Python.

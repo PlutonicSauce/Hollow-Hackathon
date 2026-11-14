@@ -1,4 +1,4 @@
-# LIFELINE testing — Milestones 1–3
+# LIFELINE testing — Milestones 1–4
 
 ## Run
 
@@ -41,7 +41,21 @@ cd backend
 
 ## GitHub Actions
 
-`.github/workflows/tests.yml` installs the backend package with `python -m pip install -e .`, then runs the documented `python -m unittest discover -s tests -v` command from `backend/` on Python 3.11, 3.12, and 3.13 for pushes and pull requests targeting `main`. It uses no secrets or paid services.
+`.github/workflows/tests.yml` installs the backend package with `python -m pip install -e .`, then runs the backend suite on Python 3.11, 3.12, and 3.13. Its frontend job runs `npm ci`, `npm test`, and `npm run build` on Node 22. It uses no secrets or paid services.
+
+## Milestone 4 application tests
+
+Run the API and UI checks from the external repository:
+
+```sh
+cd /Volumes/XcodeSSD/Hollow-Hackathon/backend
+.venv/bin/python -m unittest discover -s tests -v
+cd ../frontend
+npm test
+npm run build
+```
+
+`backend/tests/test_api.py` exercises the real loopback HTTP handlers: catalog/scenario loading, the coupled 1,100-versus-720 outputs, generated receipt verification, route/resource counterfactual changes, malformed/invalid inputs, and candidate-bound errors. `frontend/src/App.test.tsx` verifies rendered outcomes, user-driven resource changes are sent back for recomputation, and the receipt verification action is surfaced. Browser validation additionally loads the running app against the real API; frontend test mocks are not treated as integration evidence.
 
 ## Expected test discipline
 
