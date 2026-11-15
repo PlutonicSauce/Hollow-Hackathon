@@ -1,4 +1,4 @@
-# LIFELINE data contracts — Milestones 1–3
+# LIFELINE data contracts
 
 The runtime contracts are Pydantic v2 models in `backend/engine/models.py`. Unknown fields are rejected, models are immutable at the model level, primitive counts are strict integers, and cross-record references are checked by `Scenario`.
 
@@ -98,3 +98,7 @@ The loopback-only server in `backend/engine/api.py` exposes:
 `/api/evaluate` rejects malformed or invalid scenario/policy data with HTTP 422 and includes bounded-search failures as `search_limit_exceeded`. Malformed JSON is HTTP 400; oversized request bodies are rejected. The API computes no alternate domain metrics: plan scores and demand outcomes are serialized directly from engine outputs, and replay traces come from `simulate()`.
 
 The browser can change available resources by omitting them from the scenario resource tuple, edit integer route travel times, and set the existing fairness tolerance. The updated scenario is validated by the same `Scenario` contract before optimization. No browser-side result is accepted as evidence; receipt verification replays and enumerates through Python.
+
+## Public hosting boundary
+
+The model contracts above describe engine semantics. Hosted requests have stricter payload/graph/work limits for both evaluation and receipt verification; see [SECURITY.md](SECURITY.md) and [API_GUIDE.md](API_GUIDE.md). A run has H+1 boundary snapshots, but only the first H contribute service intervals. The final snapshot may differ when support expires at H. An archived receipt is evidence for its recorded input, not an assertion about later drafts.

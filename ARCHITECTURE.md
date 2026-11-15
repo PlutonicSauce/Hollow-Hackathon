@@ -1,8 +1,8 @@
-# LIFELINE architecture — Milestones 1–3
+# LIFELINE architecture
 
 ## Purpose and boundary
 
-LIFELINE is a deterministic, tactical **decision-support prototype** for exploring how explicitly modeled service dependencies and finite reserves affect synthetic infrastructure scenarios. Milestones 1–3 provide validated contracts, a reproducible functional simulator, an exhaustive optimizer for small one-shot resource assignment problems, and Decision Receipts with independent replay and bounded optimality verification. It is not a production emergency-management system, a real-time telemetry platform, or a physical power, water, ventilation, or clinical simulator.
+LIFELINE is a deterministic, tactical **decision-support prototype** for exploring how explicitly modeled service dependencies and finite reserves affect synthetic infrastructure scenarios. The engine provides validated contracts, a reproducible functional simulator, an exhaustive optimizer for small one-shot resource assignment problems, and Decision Receipts with independent replay and bounded optimality verification. It is not a production emergency-management system, a real-time telemetry platform, or a physical power, water, ventilation, or clinical simulator.
 
 The implementation deliberately models service availability as binary. It does not claim that a graph-only model predicts real hydraulic flows, electrical load, air quality, patient outcomes, or lives saved.
 
@@ -19,12 +19,23 @@ backend/
     receipts.py       Versioned receipt contracts and canonical SHA-256 payloads
     verification.py   Independent replay, baseline, and exact-space verifier
     receipt_fixtures.py Deterministic receipt fixture generator
+    api.py           Loopback development HTTP API and evaluation orchestration
+    public_app.py    Same-origin WSGI serving, admission and HTTP security
+    public_worker.py Disposable computation subprocess and OS limits
+    public_limits.py Public payload, graph, candidate and work checks
   tests/
     test_models.py
     test_simulation.py
     test_optimizer.py
     test_receipts.py
+    test_api.py
+    test_public.py
+  requirements-production.txt Pinned public runtime
+  gunicorn.conf.py   One-worker production server
   pyproject.toml      Runtime dependency and package metadata
+frontend/            React/TypeScript presentation and draft state
+scripts/             Build/start, production smoke and release oracles
+render.yaml          Single-service Render Blueprint
 .github/workflows/tests.yml
 ARCHITECTURE.md
 DATA_CONTRACTS.md
@@ -155,11 +166,7 @@ The fairness result is a policy choice, not an ethically objective answer. In th
 
 The graph has binary service, AND dependency groups, OR providers, and DAG-only propagation. It has no flow conservation, load/capacity sharing, partial service, stochastic failures, repair actions, resource redeployment, fuel consumption, multi-step dispatch, or calibrated physical reserves. Travel/setup are deterministic integer minutes. Community coverage is only as complete as the explicit demand records and weights. Scores are service exposure and policy arithmetic, never lives saved, avoided casualties, or validated operational recommendations.
 
-## Later milestones
-
-The next approved milestone may build a frontend that displays receipt inputs, action assignments, minute-by-minute replay, fairness/score tradeoffs, verification findings, and model limits. It should not imply that a valid receipt proves real-world accuracy or lives saved. Cloud deployment, uncertainty modeling, physical repair actions, and real network datasets remain out of scope until separately approved.
-
-## Milestone 4 interactive application
+## Interactive application
 
 The local application is a React/TypeScript single-page interface backed by `engine.api`, a standard-library Python HTTP server. The API accepts strict `Scenario` and `OptimizationPolicy` payloads and delegates all simulation, exact enumeration, baseline evaluation, receipt generation, and receipt verification to the existing Python engine. The client owns presentation state only: selected scenario, viewed plan, replay minute, and user-edited scenario inputs.
 
@@ -169,10 +176,16 @@ The dependency map derives its nodes, provider edges, and selected-time service 
 
 The dev launcher starts the API and Vite together, with npm/pip caches, Python bytecode, logs, and temporary files rooted under the checkout's ignored `.lifeline/` directory. Paths are resolved relative to the launcher, and a missing `backend/.venv` produces setup guidance. No external drive is required. VS Code's user-data and Copilot session storage are separate application-level paths and are not redirected by this project launcher.
 
-The first slice is a local synthetic-scenario demo, not an operational service. It has no authentication, persistence of edited scenarios, physical capacity model, live data, cloud deployment, or real-world calibration.
+The application remains a synthetic-scenario demo, not an operational service. It has no authentication, persistence of edited scenarios, physical capacity model, live data or real-world calibration. The public deployment uses the separate production boundary below.
 
-## Milestone 6 public serving
+## Public serving
 
 `engine.public_app` is a WSGI boundary served by a single threaded Gunicorn worker. It serves only explicit API routes and built frontend assets on one origin. Public computations are admitted one at a time, rate-limited globally, and executed in disposable subprocesses with CPU, Linux memory, and kill/reap wall-clock limits. Both evaluation scenarios and replay inputs inside receipts undergo the same public size, graph, candidate-space, and combined-work admission checks before engine execution. These are hosting restrictions, not changes to versioned simulation or verification semantics; declared receipt policy and hashed payloads remain intact.
 
 The Render Free Blueprint builds both layers and supplies dynamic port binding behind HTTPS ingress. No persistence, authentication, separate frontend host, or new model capability is added. See `SECURITY.md` for exact limits, `API_GUIDE.md` for HTTP contracts, and `DEPLOYMENT.md` for authorization and live verification. The development launcher remains loopback-only.
+
+## Release validation and freshness
+
+`scripts/release_check.py` uses real production HTTP responses to check all five catalog scenarios, fixed score/assignment oracles, trace-derived metrics, receipt verification and manipulated evidence. Repeating an input must reproduce traces and canonical payloads (execution timing is excluded). Changing tanker travel time from 1 to 5 changes the coupled recommendation from coordinated pump support (1,100) to scrubber support (720).
+
+The browser gates verification on the current evaluated input revision; edits invalidate completed and in-flight verification. Historical receipts are intentionally still verifiable for their recorded inputs. The stateless API has no current-scenario registry, freshness authority or revocation mechanism. Replacing a receipt’s scenario without regenerating its evidence is rejected, including after recomputing the plain hash.

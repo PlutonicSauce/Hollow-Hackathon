@@ -1,65 +1,99 @@
 # LIFELINE
 
-LIFELINE is a deterministic decision-support prototype for exploring cascading infrastructure failures. It combines a functional dependency simulator, an exhaustive small-instance intervention optimizer, comparable baselines, and independently replayable Decision Receipts.
+**See how infrastructure failures cascade. Compare constrained responses. Verify the decision.**
 
-The Milestone 4 web demo connects directly to the Python engine. It does not calculate infrastructure outcomes in the browser or describe weighted service-person-minutes as lives saved.
+[Open the live demo](https://lifeline-patriot-hackfest.onrender.com/) · [Architecture](ARCHITECTURE.md) · [API](API_GUIDE.md) · [Security limits](SECURITY.md) · [Testing](TESTING.md)
 
-## Run the interactive demo
+LIFELINE is a working decision-support research prototype built for Patriot HackFest Fall 2026. It models how disrupted power, water and other services propagate through explicit infrastructure dependencies, then evaluates where limited response resources can provide temporary backup. Its React interface presents the incident, a recommended response, minute-by-minute service availability and independently checkable Decision Receipts.
 
-Use Python 3.11–3.13 and Node 22 or newer (Vite requires Node 22.12+ on the Node 22 line). From the repository root:
+All scenarios are synthetic. This is not an emergency operating system or a physically calibrated infrastructure model.
+
+## Why the dependency model matters
+
+A useful intervention is not always at the most visible outage. A pump may need **both power and water**, while a dependent service may accept power from **either a feeder or a reserve provider**. Supporting only one missing input can produce no immediate benefit, even when coordinated support would restore several services.
+
+LIFELINE makes those relationships explicit:
+
+- **Deterministic simulation:** AND between required input groups, OR between providers, finite reserves and precise event boundaries on a directed acyclic graph. The same validated inputs reproduce the same trace.
+- **Exact search for supported small problems:** enumerate feasible one-shot resource assignments, compare no response, static priority and greedy baselines, and report the actual search counts. Exceeding a supported limit returns an error, not a partial answer labeled optimal.
+- **Transparent verification:** each Decision Receipt contains inputs, assignments, trace, metrics, baseline results, versions and a canonical SHA-256 payload digest. A separate verifier reconstructs the result and enumerates alternatives without calling the optimizer. It shares the versioned simulator; this is internal consistency verification, not independent physical validation or an authorship signature.
+
+## Reproducible demo
+
+Open **Coupled utility failure** and choose **Watch recovery**.
+
+1. At minute 0, the feeder and aquifer supply are physically faulted; air and community water are unavailable.
+2. At minute 1, coordinated generator and water-tanker backup restores the shared pump, then both dependent services. The original source faults remain active: backup is not repair.
+3. Compare responses at the same minute. The recommended plan scores **1,100**, versus **720** for both static priority and greedy and **0** for no response, across **eight candidate assignments**.
+4. Choose **Check this decision → Verify this decision**. All seven receipt checks should pass.
+5. Under **Change response conditions**, set the water tanker's travel time to the pump to **5 minutes**, review and confirm. The backend recomputes a **720-point** response supporting the scrubber instead. The previous receipt is blocked from certifying the edited inputs.
+
+The **53% higher score** is the rounded comparison `(1,100 − 720) / 720`. The score sums **population × served minutes × priority weight** over demand records. It counts service exposure, potentially across several services for the same people; it is not distinct people helped or lives saved. In this six-minute scenario, service is counted over intervals starting at minutes 0–5. Minute 6 is the excluded terminal boundary, when temporary backup ends.
+
+| Built-in scenario | Default recommended score | What it demonstrates |
+| --- | ---: | --- |
+| Coupled utility failure | 1,100 | Complementary power and water assignments beat one-step greedy |
+| Feeder cascade | 1,080 | Upstream pump support; exact search ties greedy |
+| Clinic-priority incident | 40,001 | Different demand weights make clinic support preferable |
+| Coverage trade-off | 200 | Default aggregate objective; a 40% tolerance selects 120 with better minimum coverage |
+| Reserve boundary example | 40 | Hand-checkable AND/OR behavior and reserve depletion; no response resources |
+
+These are model-specific examples, not evidence that exact optimization always outperforms a baseline.
+
+## Run locally
+
+Requirements: Python **3.11–3.13**, Node **22.12+ on the Node 22 line**, and npm. No database, API key or external drive is needed. From a fresh checkout:
 
 ```sh
-python3.13 -m venv backend/.venv
-backend/.venv/bin/python -m pip install --no-cache-dir -e ./backend
+python3 -m venv backend/.venv
+backend/.venv/bin/python -m pip install -r backend/requirements-production.txt -e ./backend
 cd frontend
 npm ci --cache ../.lifeline/caches/npm
 npm run dev
 ```
 
-Open the local Vite URL printed in the terminal (normally `http://127.0.0.1:5173`). One command starts the Python API on `127.0.0.1:8000` and the frontend. The launcher resolves paths relative to this checkout and stores logs, caches, and temporary files in ignored `.lifeline/`. No external drive is required. Stop both processes with Ctrl-C.
+Open the Vite URL printed in the terminal (normally `http://127.0.0.1:5173`). The launcher starts the Python API on `127.0.0.1:8000` and the frontend; Ctrl-C stops both. Checkout-relative development caches and logs live in ignored `.lifeline/`. The development server is loopback-only and must not be exposed publicly.
 
-To run the API directly from the repository root:
+To rehearse the production service from the repository root, using the installed Python environment:
 
 ```sh
-cd backend
-.venv/bin/python -m engine.api
+export PATH="$PWD/backend/.venv/bin:$PATH"
+bash scripts/build.sh
+PORT=8001 bash scripts/start.sh
 ```
 
-After `npm run build` in `frontend/`, the API also serves the production frontend at `http://127.0.0.1:8000`. This is a loopback-only local demo, not a public deployment configuration.
+This starts Gunicorn on all interfaces, serving the built frontend and `/api` under one origin. Use a trusted local network; public hosting belongs behind the HTTPS proxy described in [DEPLOYMENT.md](DEPLOYMENT.md).
 
-## Public hosting (Milestone 6)
+## Architecture and public execution boundary
 
-The Render Blueprint in `render.yaml` builds the existing frontend and serves it with the Python API from one Gunicorn service. Public evaluation and receipt verification use bounded, killable subprocesses; the model and Field Dossier interface are unchanged. Build with `bash scripts/build.sh` and start with `bash scripts/start.sh` in the intended Python environment. The production entry point binds `0.0.0.0:$PORT`; normal `npm run dev` remains loopback-only.
+```text
+React / TypeScript → same-origin HTTP API → bounded admission
+                                            ↓
+                              disposable Python process
+                         simulator · optimizer · receipt verifier
+```
 
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for Render authorization and HTTPS verification, [SECURITY.md](./SECURITY.md) for exact limits, and [API_GUIDE.md](./API_GUIDE.md) for requests and errors. A public URL is not considered deployed until tested.
+The browser owns presentation and draft inputs. Python owns every outcome, plan score and verification result. Public serving uses one Gunicorn worker, a shared compute slot and global request budget. Evaluation and verification receive the same graph, payload and work checks; child processes have real CPU, memory (Linux) and kill/reap wall limits. There is no persistent scenario storage, authentication, database, live telemetry or AI dependency.
 
-## Interface
+The Render configuration is a single Free Web Service. The repository requests deployment after CI; services connected only through a public repository URL may require **Manual Deploy → Deploy latest commit**. Free hosting can sleep, cold-start and reject concurrent work. It is suitable for this public demonstration, not a continuously available operational service. Exact setup, recovery and rollout checks are in [DEPLOYMENT.md](DEPLOYMENT.md).
 
-The current light-first interface pairs a spacious infrastructure map with one recommended response: select a plan, replay service changes, inspect connected assets and communities, then audit the Decision Receipt. Response edits remain drafts until reviewed and confirmed. See [DESIGN_REVIEW.md](./DESIGN_REVIEW.md) for the design decisions and resource evaluation.
+## Validate the release
 
-## Demo flow
-
-1. Select the coupled utility incident and inspect its fault propagation on the dependency map.
-2. Scrub or play the minute-by-minute trace, switching among no intervention, static priority, greedy, and exact plans.
-3. Disable a response team or change its route time; recalculate to run the same engine on changed inputs.
-4. Compare per-demand service outcomes and plan scores.
-5. Inspect the receipt and run the backend verifier.
-
-The model is deliberately abstract: binary service, AND dependency groups, OR providers, integer reserve, and deterministic faults/travel. A valid receipt confirms consistency with the versioned model, not physical accuracy or operational suitability.
-
-## Tests
+From the repository root after setup:
 
 ```sh
-cd ~/Projects/LIFELINE/backend
-.venv/bin/python -m pip install -r requirements-production.txt
-.venv/bin/python -m unittest discover -s tests -v
-
-cd ~/Projects/LIFELINE/frontend
-npm test
-npm run build
-
-cd ..
+backend/.venv/bin/python -m unittest discover -s backend/tests -v
+npm --prefix frontend test
+npm --prefix frontend run build
 backend/.venv/bin/python scripts/smoke.py
+backend/.venv/bin/python scripts/release_check.py
+backend/.venv/bin/python scripts/smoke.py https://lifeline-patriot-hackfest.onrender.com
 ```
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md), [DATA_CONTRACTS.md](./DATA_CONTRACTS.md), and [TESTING.md](./TESTING.md) for model and verification details.
+The release check starts a local production server, checks all five scenarios against fixed plan/score expectations, derives metrics from HTTP-returned traces, verifies receipts, tests recomputation and tampering, and records timings in ignored `.lifeline/release-readiness.json`. It respects the real shared rate limit and may pause for one minute. Public smoke checks avoid saturation. CI runs Python 3.11/3.12/3.13 tests plus frontend tests, build and production HTTP checks. Real-browser checks supplement the automated suite; see [TESTING.md](TESTING.md).
+
+## Technical limits
+
+Public inputs are deliberately small: **24 assets, 128 provider edges, 60 minutes, four resources and 256 raw candidate assignments**, subject to a combined work budget. Only one computation/upload is admitted at once, with 12 computation requests per minute shared across visitors. Each child has an 8-second wall deadline, 6 seconds of CPU time and a 256 MiB Linux virtual-address cap. See [SECURITY.md](SECURITY.md) for the complete contract and error handling.
+
+The model has binary service, deterministic faults/travel and one-shot backup assignments. It does not model flows, loads, partial capacity, uncertainty, physical repairs, redeployment or fuel. Priority weights and fairness tolerance are human policy choices. A verified historical receipt remains valid for its own recorded scenario; it does not certify a later edited scenario. Do not submit confidential, personal or operational incident data.

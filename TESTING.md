@@ -1,4 +1,4 @@
-# LIFELINE testing — Milestones 1–4
+# LIFELINE testing
 
 ## Run
 
@@ -72,10 +72,18 @@ Tests assert externally meaningful states and metrics, not private helper detail
 
 ## Launch redesign frontend checks
 
-The current frontend suite has 16 tests covering draft confirmation/cancellation, baseline and per-minute status changes, linked keyboard asset selection, evaluated-route consistency during pending recomputation, receipt success/failure/gating, replay completion, predictable focus, and graph bounds. Modal focus trapping and responsive layout receive real-browser checks because jsdom does not implement native modal behavior or CSS layout. `scripts/smoke.py` continues to validate the unchanged production backend and its known scores/digest. See `DESIGN_REVIEW.md` for the actual design and remaining UX limits.
+The current frontend suite includes tests covering draft confirmation/cancellation, baseline and per-minute status changes, linked keyboard asset selection, evaluated-route consistency during pending recomputation, receipt success/failure/gating, replay completion, predictable focus, and graph bounds. Modal focus trapping and responsive layout receive real-browser checks because jsdom does not implement native modal behavior or CSS layout. `scripts/smoke.py` continues to validate the unchanged production backend and its known scores/digest. See `DESIGN_REVIEW.md` for the actual design and remaining UX limits.
 
 Light-first acceptance: inspect actual browser screenshots at 1440 × 900 and 390 × 844, including the mobile map. Confirm the failed supplies, affected communities, recommended backup and weighted-score benefit are visible without desktop scrolling. The on-demand comparison must update map/service states while preserving the independently calculated recommendation.
 
 ## Recovery clarity pass
 
 Frontend regression coverage includes starting Watch recovery from a baseline/end-boundary view, selecting the recommended trace at minute zero without another computation, then advancing real trace frames. Browser review at 1440 × 900 and 390 × 844 checked the primary action, readable labels, no horizontal overflow, SVG selection hit areas, per-minute baseline comparison and the seven-check verifier. In the coupled fixture, minute 1 restores both services; minute 6 is the excluded endpoint where temporary backup expires. Backend/full-horizon scores remain 1,100 versus 720.
+
+## Final release checks
+
+After the unit suites and build, run `backend/.venv/bin/python scripts/release_check.py`. It starts its own real Gunicorn server and validates every catalog entry, including exact score/assignment oracles, H+1 boundary traces, physical-fault suppression, per-demand metrics derived independently from returned traces, canonical repeatability and all seven receipt checks. It also changes the tanker's pump route, verifies the new 720-point result, rejects stale evidence bound to changed inputs and both digest-mismatch and rehashed false claims, exercises the fairness policy and checks recovery after an invalid reference. An unchanged historical receipt is expected to remain valid for its original inputs.
+
+The script honors the global 12-request budget, may wait one minute, and writes ignored `.lifeline/release-readiness.json` with one-sample HTTP/search timings and OS-reported largest-child peak RSS. That memory value is not summed concurrent memory or Render telemetry; timings are diagnostics, not latency promises. CI runs this check in the frontend/integration job. Existing smoke tests separately exercise busy admission, rate saturation and upload cutoff. Public smoke remains the smaller non-saturating check.
+
+HTTP client regression tests cover non-JSON proxy/cold-start errors without exposing diagnostic bodies, and the UI verifies that retrying receipt verification does not recompute optimization. Editing inputs clears the retry context and keeps stale verification disabled. Real-browser release review checks draft confirmation, changed results/receipt, disabled stale verification and the successful verifier against the production HTTP boundary. No claim of an automated browser E2E suite or formal accessibility/security certification is made.

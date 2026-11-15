@@ -10,11 +10,15 @@ The frontend and API share one origin. Requests and successful responses use JSO
 | `POST /api/evaluate` | Body: `{"scenario": {...}, "policy": {"primary_tolerance_ppm": 0}}`; policy is optional |
 | `POST /api/verify` | Body: `{"receipt": {...}}` or the receipt object directly; JSON strings containing receipts are not accepted by the public HTTP boundary |
 
-Use `Content-Type: application/json` and Content-Length for POSTs. Browser `fetch` and ordinary HTTP clients set the length automatically. No API key, cookies, or CORS access is provided. `HEAD` supports the GET routes; unsupported methods return 405.
+Use `Content-Type: application/json` and Content-Length for POSTs. Ordinary HTTP/1.1 clients set the length automatically; hosted browser HTTP/2 traffic is framed by Render ingress before reaching Gunicorn. No API key, cookies, or CORS access is provided. `HEAD` supports the GET routes; unsupported methods return 405.
 
 Evaluation returns `scenario`, `no_intervention_simulation`, `optimization`, `receipt`, and `traces`. The four trace keys are `no_intervention`, `static_priority`, `greedy`, and `optimized`. Scores are weighted service-person-minutes, never lives saved. Policy fields are `primary_tolerance_ppm` (0–1,000,000) and optional positive `max_candidate_plans` (engine default 100,000). A smaller declared candidate limit is honored; a larger one cannot bypass the public 256-candidate/work cap. Policy values are retained in the receipt without rewriting its digest semantics.
 
 Verification independently reconstructs/replays the selected plan, derives metrics, recomputes baselines, and enumerates the bounded assignment space without calling the optimizer. It shares the versioned simulator. A normal verification report has `valid`, seven `*_status` fields, `issues`, `verified_payload_sha256`, and measured `verification_duration_ns`. An invalid/tampered receipt normally returns **200 with `valid:false`**. Malformed scenario contracts or public execution/admission violations instead return a 4xx error; they must not be interpreted as a verification pass.
+
+## Receipt scope and edited inputs
+
+The API is stateless: it verifies the scenario recorded in the receipt, not a session's current draft. An unchanged historical receipt can still pass after someone evaluates a different scenario. The frontend invalidates its verification state on any edit, disables verification until recomputation, and ignores in-flight verification responses from older input revisions. Substituting new inputs into an old receipt fails integrity; rehashing that substitution still fails replay/baseline/optimality evidence. This does not provide freshness, authorship or trusted timestamps.
 
 ## Errors
 

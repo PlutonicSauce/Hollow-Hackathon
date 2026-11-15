@@ -4,9 +4,9 @@ LIFELINE is a synthetic decision-support prototype, not an emergency operating s
 
 ## Serving boundary
 
-Public deployments use `scripts/start.sh`: Gunicorn, one worker, four HTTP threads, at most 16 connections, and a backlog of 16. Only the built frontend and explicit API routes are served. There are no directory listings, arbitrary file routes, database, uploads, cookies, or authentication. `python -m engine.api` remains a loopback-only development server and must not be exposed publicly.
+Public deployments use `scripts/start.sh`: Gunicorn, one worker, four HTTP threads, at most 16 connections, and a backlog of 16. Only the built frontend and explicit API routes are served. There are no directory listings, arbitrary file routes, database, file uploads, cookies, or authentication. `python -m engine.api` remains a loopback-only development server and must not be exposed publicly.
 
-Render terminates HTTPS and redirects HTTP. The application trusts forwarded HTTPS information only because its hosted port sits behind Render ingress; do not reuse that trust configuration on an unprotected host. Responses include CSP, frame denial, MIME sniffing protection, a no-referrer policy, and disabled camera/microphone/location permissions. HSTS is sent on HTTPS. Existing Google Fonts remain allowed; inline styles are needed by the current React interface. Scripts and API connections are same-origin. No CORS permissions are granted.
+Render terminates HTTPS and redirects HTTP. The application trusts forwarded HTTPS information only because its hosted port sits behind Render ingress; do not reuse that trust configuration on an unprotected host. Responses include CSP, frame denial, MIME sniffing protection, a no-referrer policy, and disabled camera/microphone/location permissions. HSTS is sent on HTTPS. Legacy Google Fonts origins remain allowed by CSP, although the current UI uses system fonts and makes no font requests; inline styles are needed by the current React interface. Scripts and API connections are same-origin. No CORS permissions are granted.
 
 ## Admission and execution limits
 

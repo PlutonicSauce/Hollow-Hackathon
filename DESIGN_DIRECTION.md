@@ -2,7 +2,7 @@
 
 # LIFELINE — Design Direction
 
-**Document status:** Implementation-ready creative direction.
+**Document status:** Historical, superseded design exploration. The deployed light recovery workspace is documented in [DESIGN_REVIEW.md](DESIGN_REVIEW.md); do not implement or restore this earlier direction.
 **Do not modify the Python backend, simulation logic, or optimization engine.**
 
 ---

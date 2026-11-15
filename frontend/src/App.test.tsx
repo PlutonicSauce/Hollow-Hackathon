@@ -444,6 +444,43 @@ describe("LIFELINE incident experience", () => {
     expect(screen.getByText(/DIGEST_MISMATCH/)).toBeInTheDocument();
   });
 
+  it("ignores a verification response that completes after the inputs change", async () => {
+    const user = userEvent.setup();
+    let finish!: (report: VerificationReport) => void;
+    vi.mocked(api.verify).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    render(<App />);
+    await screen.findByRole("radio", { name: /Recommended/ });
+    await user.click(screen.getByRole("button", { name: "Verify this decision" }));
+    await user.click(screen.getByText("Change response conditions"));
+    await user.click(screen.getByRole("checkbox", { name: "Generator crew available" }));
+    await act(async () => { finish(verified); });
+    expect(screen.queryByText("Receipt verified")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Verify this decision" })).toBeDisabled();
+    expect(screen.getByText("Inputs have changed")).toBeInTheDocument();
+  });
+
+  it("retries a failed verification without recomputing and cancels that retry on edits", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.verify)
+      .mockRejectedValueOnce(new Error("One computation is already running. Retry shortly."))
+      .mockResolvedValueOnce(verified)
+      .mockRejectedValueOnce(new Error("The API is unavailable."));
+    render(<App />);
+    await screen.findByRole("radio", { name: /Recommended/ });
+    await user.click(screen.getByRole("button", { name: "Verify this decision" }));
+    await user.click(await screen.findByRole("button", { name: "Retry verification" }));
+    expect(await screen.findByText("Receipt verified")).toBeInTheDocument();
+    expect(api.evaluate).toHaveBeenCalledTimes(1);
+    expect(api.verify).toHaveBeenCalledTimes(2);
+    await user.click(screen.getByRole("button", { name: "Verify this decision" }));
+    await screen.findByRole("button", { name: "Retry verification" });
+    await user.click(screen.getByText("Change response conditions"));
+    await user.click(screen.getByRole("checkbox", { name: "Generator crew available" }));
+    expect(screen.queryByRole("button", { name: "Retry verification" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Verify this decision" })).toBeDisabled();
+    expect(api.verify).toHaveBeenCalledTimes(3);
+  });
+
   it("keeps the previous receipt stale and reports a failed recomputation", async () => {
     const user = userEvent.setup();
     vi.mocked(api.evaluate)

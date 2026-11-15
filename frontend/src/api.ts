@@ -15,7 +15,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       ...init?.headers,
     },
   });
-  const body: unknown = await response.json();
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    // Hosting proxies can return HTML during a cold start or upstream failure.
+    // Never expose their body or a JSON parser exception in the product.
+    throw new Error(
+      response.ok
+        ? "The server returned an unreadable response. Try again shortly."
+        : `Request failed (${response.status}). Try again shortly.`,
+    );
+  }
   if (!response.ok) {
     const message =
       typeof body === "object" &&

@@ -1,12 +1,12 @@
 # LIFELINE agent handoff
 
-## Existing local application
+## Current release
 
-Milestone 4 adds a local interactive React/TypeScript application and a standard-library Python API around the existing engine. The API returns real simulation traces, exact optimization/baseline results, Decision Receipts, and verifier reports. Read `README.md`, `ARCHITECTURE.md`, `DATA_CONTRACTS.md`, and `TESTING.md` before changing semantics.
+The deployed light React/TypeScript application uses a single Gunicorn service and bounded Python computations. `engine.api` is the loopback-only development server. The API returns real simulation traces, exact optimization/baseline results, Decision Receipts, and verifier reports. Read `README.md`, `ARCHITECTURE.md`, `DATA_CONTRACTS.md`, and `TESTING.md` before changing semantics.
 
 ## Scope boundary
 
-Milestone 4's local API and interactive frontend are implemented. Do not start a later milestone or add authentication, PDF export, LLM decision support, GIS, sensor integrations, physical repair actions, resource reuse, real-world telemetry, network datasets, or operational claims without approval.
+The public deployment and light-interface redesign are complete. Preserve the current recovery workspace and security boundary. Do not start a later milestone or add authentication, PDF export, LLM decision support, GIS, sensor integrations, physical repair actions, resource reuse, real-world telemetry, network datasets, or operational claims without approval.
 
 ## Required invariants
 
@@ -47,11 +47,13 @@ The GitHub workflow runs `python -m unittest discover -s tests -v` on Python 3.1
 - The browser is a presentation/input layer; all service outcomes, plan scores, baselines, traces, receipts, and verification reports come from the Python engine.
 - User-edited resource availability and travel times are sent through `Scenario.model_validate` before evaluation.
 - The displayed weighted objective is never called lives saved.
-- The local API binds to 127.0.0.1. Do not expose it on a public interface without a separate security review and authentication design.
+- The local API binds to 127.0.0.1. Do not expose it publicly; use the existing bounded production boundary.
 - The project dev launcher resolves this checkout and stores cache/temp/log files in ignored `.lifeline/`. It requires `backend/.venv`; no external drive is needed.
 - Copilot session history and VS Code user-data are controlled by the active editor launch configuration, not by the LIFELINE dev launcher. Verify those separately; this environment may still keep session state internally.
 
 ## Milestone 5: The Field Dossier Redesign
+
+Historical, superseded by the light-interface and recovery-workspace passes; the test counts below describe that earlier milestone only.
 
 Milestone 5 implements the approved creative direction reset to **The Field Dossier**:
 - **Design System:** Engineered IBM Plex Sans and IBM Plex Mono typography, warm coal (`#0f0e0c`), amber (`#c8a86b`), sage (`#8aab78`), and clay-red (`#c26b5e`) palette. No gradients, glowing decorative dots, or generic SaaS card borders.
@@ -77,3 +79,7 @@ Milestone 6 permits the single free Render public demo, its security limits, and
 The current UI uses a light-first infrastructure workspace, visible plan radio choices, linked asset inspection and community/timeline status, then response details and Decision Receipt audit. Draft edits require native modal confirmation and do not alter the displayed evaluated run. Preserve the distinction between per-minute availability and whole-horizon coverage. `DESIGN_REVIEW.md` records the design resources, interaction invariants, validation and limitations. Backend semantics and deployment limits are unchanged.
 
 The rejected graphite direction has been replaced with light surfaces, circular service markers, one recommendation, on-demand comparisons and native CSS/SVG motion. Graph motion is tied to real trace states and honors reduced-motion preferences. The map is explicitly schematic. See the current `DESIGN_REVIEW.md`; do not restore the dark layout.
+
+## Final release readiness pass
+
+The release keeps the light recovery workspace, algorithms, receipt semantics and hosting architecture. README and public API/security/deployment/architecture/testing documentation describe the current system. `scripts/release_check.py` validates all five scenarios over Gunicorn HTTP, trace-derived metrics, reproducibility, altered routes and forged/rehashed receipts; it respects the production rate budget. Non-JSON proxy errors are sanitized, and failed receipt verification retries verification rather than optimization. Input edits invalidate pending and completed verification. Historical receipts remain valid for their recorded inputs; do not invent server-side revocation/freshness semantics. Follow TESTING.md for the final suite and live checks. Do not automatically begin another milestone.

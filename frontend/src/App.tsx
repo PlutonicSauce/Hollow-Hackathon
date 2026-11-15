@@ -55,6 +55,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState("");
+  const [errorOperation, setErrorOperation] = useState<"evaluate" | "verify">("evaluate");
   const [verification, setVerification] = useState<VerificationReport | null>(
     null,
   );
@@ -81,6 +82,7 @@ function App() {
       setResultsStale(true);
       setPlaying(false);
       setError("");
+      setErrorOperation("evaluate");
       setVerification(null);
       verificationRequest.current += 1;
       setVerifying(false);
@@ -147,6 +149,7 @@ function App() {
     setVerification(null);
     setVerifying(false);
     setError("");
+    setErrorOperation("evaluate");
     api
       .scenario(scenarioKey)
       .then(async (loaded) => {
@@ -235,6 +238,8 @@ function App() {
   };
 
   const markInputsDirty = () => {
+    setError("");
+    setErrorOperation("evaluate");
     inputRevision.current += 1;
     verificationRequest.current += 1;
     setResultsStale(true);
@@ -314,6 +319,7 @@ function App() {
             ? reason.message
             : "Receipt verification failed.",
         );
+        setErrorOperation("verify");
       }
     } finally {
       if (requestId === verificationRequest.current) setVerifying(false);
@@ -497,16 +503,18 @@ function App() {
             <button
               type="button"
               className="secondary-button"
-              disabled={loading}
+              disabled={loading || verifying || (errorOperation === "verify" && resultsStale)}
               onClick={() =>
-                resultsStale
+                errorOperation === "verify" && evaluation
+                  ? void verifyReceipt(evaluation.receipt)
+                  : resultsStale
                   ? recalculate()
                   : scenario
                     ? void runEvaluation(scenario, tolerancePpm)
                     : window.location.reload()
               }
             >
-              Retry evaluation
+              {errorOperation === "verify" ? "Retry verification" : "Retry evaluation"}
             </button>
             <button onClick={() => setError("")} aria-label="Dismiss error">
               ×

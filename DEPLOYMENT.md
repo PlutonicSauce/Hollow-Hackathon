@@ -2,13 +2,17 @@
 
 ## One service
 
-`render.yaml` defines one **free Python Web Service**, branch `main`, region Virginia, health path `/api/health`, with automatic deployment after CI checks pass. Render's Python runtime includes Node/npm, so no separate frontend host, container, database, paid plan, or secret is needed. The frontend uses relative `/api/...` URLs.
+`render.yaml` defines one **free Python Web Service**, branch `main`, region Virginia, health path `/api/health`, requesting automatic deployment after CI checks pass. That setting requires a connected Git provider; a service created from a public repository URL must be deployed manually. Render's Python runtime includes Node/npm, so no separate frontend host, container, database, paid plan, or secret is needed. The frontend uses relative `/api/...` URLs.
 
 Build: `bash scripts/build.sh`. This installs the pinned Python runtime requirements and editable engine package, runs `npm ci` from the lockfile, and builds the React app. Editable installation preserves the engine's checkout-relative frontend path. Start: `bash scripts/start.sh`. This checks for the build and execs Gunicorn with `backend/gunicorn.conf.py`, listening on `0.0.0.0:$PORT` (default 8000). The Blueprint pins Python 3.13.18 and Node 22.23.5; local validation may use another supported patch release.
 
 Render supplies HTTPS/TLS and HTTP redirects. Free services sleep after 15 minutes idle and may take about a minute to wake. The filesystem is ephemeral and free hours/build/bandwidth quotas apply. This is a public hackathon demo, not a continuously available emergency service. Keep the instance on **Free** and review workspace usage/spending settings; do not add paid resources. See [Render Free limits](https://render.com/docs/free), [native runtime tools](https://render.com/docs/native-runtimes), and [Blueprint settings](https://render.com/docs/blueprint-spec).
 
-## Authorize and create
+## Existing service and new installations
+
+The existing demo is [lifeline-patriot-hackfest](https://lifeline-patriot-hackfest.onrender.com/). For an update, confirm CI on `main`, inspect Render’s current source commit, then use **Manual Deploy → Deploy latest commit** if no automatic deploy starts. Avoid **Deploy a specific commit** for routine releases; it disables auto-deploy. Check the source SHA and test the public URL after rollout. Do not create a second service for an update.
+
+For a fresh installation:
 
 1. Sign in at [Render Dashboard](https://dashboard.render.com/).
 2. Choose **New → Blueprint**. Connect GitHub if prompted; authorize access to **only `PlutonicSauce/Hollow-Hackathon`**.
@@ -25,7 +29,7 @@ If GitHub is already connected, only steps 2–5 remain. Account login, GitHub a
 backend/.venv/bin/python scripts/smoke.py https://YOUR-SERVICE.onrender.com
 ```
 
-Then open that HTTPS URL in a browser: confirm the Field Dossier loads, the coupled utility scenario shows 1,100 versus 720/720, and **Verify this decision** passes all seven checks. Edit a crew/route, recompute, and confirm the backend changes the recommendation. A working local server or green build is not proof of a successful public deployment.
+Then open that HTTPS URL in a browser: confirm the light recovery workspace loads, the coupled utility scenario shows 1,100 versus 720/720, and **Verify this decision** passes all seven checks. Edit a crew/route, recompute, and confirm the backend changes the recommendation. A working local server or green build is not proof of a successful public deployment.
 
 ## Local production rehearsal
 
@@ -47,4 +51,4 @@ This production entry point listens on all interfaces; use it on a trusted local
 - **Missing frontend:** use the build script from repository root, then restart. The start script fails before serving an absent build.
 - **Regression:** use Render's rollback to a previously validated public-serving deployment, or revert the offending commit and deploy after CI. Do not roll public traffic back to `775c897`, which has no production serving boundary.
 
-Deployment status is intentionally not hardcoded here. Record/share the actual URL only after the live checks pass. Application access logging is disabled; platform logs/metadata are controlled by Render. No submitted scenarios are stored.
+Deployment status is intentionally not hardcoded here. Record/share the actual URL only after the live checks pass. Render Free is demo hosting, not a production availability guarantee. Application access logging is disabled; platform logs/metadata are controlled by Render. No submitted scenarios are stored.
