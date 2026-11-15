@@ -1,0 +1,466 @@
+{
+  "scenario": {
+    "id": "hand-calculated-or-and",
+    "horizon_minutes": 4,
+    "assets": [
+      {
+        "id": "grid",
+        "name": "Grid feeder",
+        "kind": "source",
+        "provides": "power",
+        "dependency_groups": [],
+        "buffer": {
+          "unit": "reserve_unit",
+          "capacity_units": 0,
+          "initial_units": 0,
+          "depletion_units_per_minute": 0,
+          "recovery_units_per_minute": 0
+        }
+      },
+      {
+        "id": "backup",
+        "name": "Backup power source",
+        "kind": "source",
+        "provides": "power",
+        "dependency_groups": [],
+        "buffer": {
+          "unit": "reserve_unit",
+          "capacity_units": 0,
+          "initial_units": 0,
+          "depletion_units_per_minute": 0,
+          "recovery_units_per_minute": 0
+        }
+      },
+      {
+        "id": "aquifer",
+        "name": "Raw-water source",
+        "kind": "source",
+        "provides": "water",
+        "dependency_groups": [],
+        "buffer": {
+          "unit": "reserve_unit",
+          "capacity_units": 0,
+          "initial_units": 0,
+          "depletion_units_per_minute": 0,
+          "recovery_units_per_minute": 0
+        }
+      },
+      {
+        "id": "pump",
+        "name": "Water pump",
+        "kind": "facility",
+        "provides": "water",
+        "dependency_groups": [
+          {
+            "id": "pump-power",
+            "service_type": "power",
+            "provider_asset_ids": [
+              "grid",
+              "backup"
+            ]
+          },
+          {
+            "id": "pump-raw-water",
+            "service_type": "water",
+            "provider_asset_ids": [
+              "aquifer"
+            ]
+          }
+        ],
+        "buffer": {
+          "unit": "reserve_unit",
+          "capacity_units": 2,
+          "initial_units": 1,
+          "depletion_units_per_minute": 1,
+          "recovery_units_per_minute": 1
+        }
+      },
+      {
+        "id": "scrubber",
+        "name": "Air scrubber",
+        "kind": "demand_endpoint",
+        "provides": "air",
+        "dependency_groups": [
+          {
+            "id": "scrubber-power",
+            "service_type": "power",
+            "provider_asset_ids": [
+              "grid"
+            ]
+          },
+          {
+            "id": "scrubber-water",
+            "service_type": "water",
+            "provider_asset_ids": [
+              "pump"
+            ]
+          }
+        ],
+        "buffer": {
+          "unit": "reserve_unit",
+          "capacity_units": 0,
+          "initial_units": 0,
+          "depletion_units_per_minute": 0,
+          "recovery_units_per_minute": 0
+        }
+      }
+    ],
+    "demands": [
+      {
+        "id": "deep-community-air",
+        "community_id": "deep-community",
+        "served_by_asset_id": "scrubber",
+        "service_type": "air",
+        "population": 10,
+        "priority_weight": 2
+      }
+    ],
+    "faults": [
+      {
+        "id": "grid-outage",
+        "asset_id": "grid",
+        "start_minute": 0,
+        "end_minute": 2
+      },
+      {
+        "id": "backup-outage",
+        "asset_id": "backup",
+        "start_minute": 0,
+        "end_minute": 1
+      }
+    ],
+    "resources": [],
+    "interventions": []
+  },
+  "optimization": {
+    "policy": {
+      "primary_tolerance_ppm": 0,
+      "max_candidate_plans": 100000
+    },
+    "candidate_plans": 1,
+    "feasible_plans": 1,
+    "plans_evaluated": 1,
+    "fairness_eligible_plans": 1,
+    "exhaustive_search_complete": true,
+    "best_primary_score": 40,
+    "selected_plan": {
+      "plan_id": "[]",
+      "interventions": [],
+      "idle_resource_ids": [],
+      "objective": {
+        "weighted_service_person_minutes": 40,
+        "minimum_community_service_coverage_ppm": 500000,
+        "deployment_minutes": 0,
+        "intervention_count": 0
+      },
+      "demand_metrics": [
+        {
+          "demand_id": "deep-community-air",
+          "community_id": "deep-community",
+          "service_type": "air",
+          "population": 10,
+          "served_minutes": 2,
+          "service_person_minutes": 20,
+          "total_service_person_minutes": 40,
+          "coverage_parts_per_million": 500000,
+          "priority_weight": 2,
+          "weighted_service_person_minutes": 40
+        }
+      ],
+      "community_service_coverages": [
+        {
+          "demand_id": "deep-community-air",
+          "community_id": "deep-community",
+          "service_type": "air",
+          "weighted_service_person_minutes": 40,
+          "total_weighted_service_person_minutes": 80,
+          "coverage_parts_per_million": 500000
+        }
+      ]
+    },
+    "baseline_comparisons": [
+      {
+        "baseline": "no_intervention",
+        "plan": {
+          "plan_id": "[]",
+          "interventions": [],
+          "idle_resource_ids": [],
+          "objective": {
+            "weighted_service_person_minutes": 40,
+            "minimum_community_service_coverage_ppm": 500000,
+            "deployment_minutes": 0,
+            "intervention_count": 0
+          },
+          "demand_metrics": [
+            {
+              "demand_id": "deep-community-air",
+              "community_id": "deep-community",
+              "service_type": "air",
+              "population": 10,
+              "served_minutes": 2,
+              "service_person_minutes": 20,
+              "total_service_person_minutes": 40,
+              "coverage_parts_per_million": 500000,
+              "priority_weight": 2,
+              "weighted_service_person_minutes": 40
+            }
+          ],
+          "community_service_coverages": [
+            {
+              "demand_id": "deep-community-air",
+              "community_id": "deep-community",
+              "service_type": "air",
+              "weighted_service_person_minutes": 40,
+              "total_weighted_service_person_minutes": 80,
+              "coverage_parts_per_million": 500000
+            }
+          ]
+        },
+        "primary_score_delta": 0,
+        "minimum_community_service_coverage_delta_ppm": 0
+      },
+      {
+        "baseline": "static_priority",
+        "plan": {
+          "plan_id": "[]",
+          "interventions": [],
+          "idle_resource_ids": [],
+          "objective": {
+            "weighted_service_person_minutes": 40,
+            "minimum_community_service_coverage_ppm": 500000,
+            "deployment_minutes": 0,
+            "intervention_count": 0
+          },
+          "demand_metrics": [
+            {
+              "demand_id": "deep-community-air",
+              "community_id": "deep-community",
+              "service_type": "air",
+              "population": 10,
+              "served_minutes": 2,
+              "service_person_minutes": 20,
+              "total_service_person_minutes": 40,
+              "coverage_parts_per_million": 500000,
+              "priority_weight": 2,
+              "weighted_service_person_minutes": 40
+            }
+          ],
+          "community_service_coverages": [
+            {
+              "demand_id": "deep-community-air",
+              "community_id": "deep-community",
+              "service_type": "air",
+              "weighted_service_person_minutes": 40,
+              "total_weighted_service_person_minutes": 80,
+              "coverage_parts_per_million": 500000
+            }
+          ]
+        },
+        "primary_score_delta": 0,
+        "minimum_community_service_coverage_delta_ppm": 0
+      },
+      {
+        "baseline": "greedy",
+        "plan": {
+          "plan_id": "[]",
+          "interventions": [],
+          "idle_resource_ids": [],
+          "objective": {
+            "weighted_service_person_minutes": 40,
+            "minimum_community_service_coverage_ppm": 500000,
+            "deployment_minutes": 0,
+            "intervention_count": 0
+          },
+          "demand_metrics": [
+            {
+              "demand_id": "deep-community-air",
+              "community_id": "deep-community",
+              "service_type": "air",
+              "population": 10,
+              "served_minutes": 2,
+              "service_person_minutes": 20,
+              "total_service_person_minutes": 40,
+              "coverage_parts_per_million": 500000,
+              "priority_weight": 2,
+              "weighted_service_person_minutes": 40
+            }
+          ],
+          "community_service_coverages": [
+            {
+              "demand_id": "deep-community-air",
+              "community_id": "deep-community",
+              "service_type": "air",
+              "weighted_service_person_minutes": 40,
+              "total_weighted_service_person_minutes": 80,
+              "coverage_parts_per_million": 500000
+            }
+          ]
+        },
+        "primary_score_delta": 0,
+        "minimum_community_service_coverage_delta_ppm": 0
+      }
+    ],
+    "computation_time_ns": 86125
+  },
+  "coordination_certificate": {
+    "version": "coordination-certificate-v1",
+    "scenario_id": "hand-calculated-or-and",
+    "scenario_sha256": "d32757f6734b850378b3c8092db0990d92f6a9cab8ac7e0fdd5785530ac87f5d",
+    "actions": [],
+    "plan_score": 40,
+    "empty_score": 40,
+    "kind": "no_actions",
+    "joint_gain": 0,
+    "joint_gain_share_ppm": 0,
+    "subset_scores": [
+      {
+        "intervention_ids": [],
+        "weighted_service_person_minutes": 40,
+        "served": [
+          {
+            "demand_id": "deep-community-air",
+            "served_minutes": 2
+          }
+        ],
+        "availability": [
+          {
+            "asset_id": "aquifer",
+            "service_available": [
+              true,
+              true,
+              true,
+              true,
+              true
+            ]
+          },
+          {
+            "asset_id": "backup",
+            "service_available": [
+              false,
+              true,
+              true,
+              true,
+              true
+            ]
+          },
+          {
+            "asset_id": "grid",
+            "service_available": [
+              false,
+              false,
+              true,
+              true,
+              true
+            ]
+          },
+          {
+            "asset_id": "pump",
+            "service_available": [
+              true,
+              true,
+              true,
+              true,
+              true
+            ]
+          },
+          {
+            "asset_id": "scrubber",
+            "service_available": [
+              false,
+              false,
+              true,
+              true,
+              true
+            ]
+          }
+        ]
+      }
+    ],
+    "necessity": [],
+    "full_recovery_minimal_sets": [
+      []
+    ],
+    "demand_sufficiency": [
+      {
+        "demand_id": "deep-community-air",
+        "required_served_minutes": 2,
+        "minimal_sets": [
+          []
+        ]
+      }
+    ],
+    "greedy": {
+      "steps": [],
+      "final_score": 40,
+      "shortfall_versus_plan": 0,
+      "trap_detected": false
+    },
+    "limitations": {
+      "statements": [
+        "Claims hold inside the declared deterministic LIFELINE model only.",
+        "Minimal sets are minimal within the recommended actions, not across all possible plans.",
+        "Joint gain of a set larger than two is its Harsanyi dividend, not a pairwise effect.",
+        "The digest shows integrity, not authorship or a trusted timestamp.",
+        "Scores are weighted service-person-minutes, not people helped or lives saved.",
+        "Builder and verifier share the simulator and claim formulas; these checks establish replay consistency, not fully independent verification.",
+        "Matching the plan means matching its served-minute totals, not full recovery or the same timing for every demand."
+      ]
+    },
+    "certificate_sha256": "3fcb7d4d3d028e7a7f8b8c93a0f7f374ef991a7c06af2fc45ea09c1a19a8e9c4"
+  },
+  "coordination_verification": {
+    "status": "passed",
+    "checks": [
+      {
+        "name": "schema",
+        "passed": true,
+        "detail": "certificate matches the versioned schema"
+      },
+      {
+        "name": "payload_integrity",
+        "passed": true,
+        "detail": "recorded SHA-256 matches the canonical certificate body"
+      },
+      {
+        "name": "scenario_binding",
+        "passed": true,
+        "detail": "certificate was made for exactly these scenario inputs"
+      },
+      {
+        "name": "actions_valid",
+        "passed": true,
+        "detail": "every action is a feasible one-shot assignment"
+      },
+      {
+        "name": "subset_replay",
+        "passed": true,
+        "detail": "replayed 1 action subsets with the simulator"
+      },
+      {
+        "name": "joint_gain",
+        "passed": true,
+        "detail": "joint gain and plan score recomputed from the replays"
+      },
+      {
+        "name": "necessity",
+        "passed": true,
+        "detail": "each action was removed and the plan replayed"
+      },
+      {
+        "name": "minimal_sufficiency",
+        "passed": true,
+        "detail": "minimal sufficient subsets recomputed by exhaustive subset search"
+      },
+      {
+        "name": "greedy_witness",
+        "passed": true,
+        "detail": "greedy policy replayed step by step on the same simulator"
+      },
+      {
+        "name": "claim_scope",
+        "passed": true,
+        "detail": "scope and shared-formula limitations match this certificate version"
+      }
+    ]
+  }
+}

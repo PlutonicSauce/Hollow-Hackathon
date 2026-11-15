@@ -99,6 +99,17 @@ def check(base: str) -> dict:
                 assert metric["coverage_parts_per_million"] == served * 1_000_000 // scenario["horizon_minutes"]
                 total += weighted
             assert total == plans[key]["objective"]["weighted_service_person_minutes"]
+        certificate = result["coordination_certificate"]
+        report = result["coordination_verification"]
+        assert report["status"] == "passed" and len(report["checks"]) == 10
+        assert all(item["passed"] for item in report["checks"])
+        assert certificate["plan_score"] == optimization["selected_plan"]["objective"]["weighted_service_person_minutes"]
+        for subset in certificate["subset_scores"]:
+            availability = {item["asset_id"]: item["service_available"] for item in subset["availability"]}
+            assert all(len(series) == scenario["horizon_minutes"] + 1 for series in availability.values())
+            served = {item["demand_id"]: item["served_minutes"] for item in subset["served"]}
+            assert all(served[d["id"]] == sum(availability[d["served_by_asset_id"]][:-1]) for d in scenario["demands"])
+            assert subset["weighted_service_person_minutes"] == sum(served[d["id"]] * d["population"] * d["priority_weight"] for d in scenario["demands"])
         receipt = result["receipt"]
         assert receipt["payload"]["scenario"] == scenario
         assert receipt["payload"]["selected_trace"] == result["traces"]["optimized"]
@@ -116,6 +127,8 @@ def check(base: str) -> dict:
         assert selected["objective"]["weighted_service_person_minutes"] == score
         assert {action["dependency_group_id"] for action in selected["interventions"]} == groups
         verify(result["receipt"])
+        if key == "coupled-utility":
+            assert sorted(row["weighted_service_person_minutes"] for row in result["coordination_certificate"]["subset_scores"]) == [0, 0, 0, 1100]
         results[key] = result
         row = {"scenario": key, "score": score, "candidates": result["optimization"]["candidate_plans"],
                "exact_search_ms": round(result["optimization"]["computation_time_ns"] / 1_000_000, 2),

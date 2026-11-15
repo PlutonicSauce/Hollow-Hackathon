@@ -189,3 +189,7 @@ The Render Free Blueprint builds both layers and supplies dynamic port binding b
 `scripts/release_check.py` uses real production HTTP responses to check all five catalog scenarios, fixed score/assignment oracles, trace-derived metrics, receipt verification and manipulated evidence. Repeating an input must reproduce traces and canonical payloads (execution timing is excluded). Changing tanker travel time from 1 to 5 changes the coupled recommendation from coordinated pump support (1,100) to scrubber support (720).
 
 The browser gates verification on the current evaluated input revision; edits invalidate completed and in-flight verification. Historical receipts are intentionally still verifiable for their recorded inputs. The stateless API has no current-scenario registry, freshness authority or revocation mechanism. Replacing a receipt’s scenario without regenerating its evidence is rejected, including after recomputing the plain hash.
+
+## Coordination evidence
+
+Evaluation now builds and replay-checks a bounded Coordination Certificate outside the unchanged Decision Receipt payload. The frontend selects server-derived subset outcomes. No deployment topology or public endpoint is added. See [semantics and trust boundaries](COORDINATION_CERTIFICATES.md).

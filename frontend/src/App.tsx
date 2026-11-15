@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { api } from "./api";
+import { CoordinationExplorer } from "./CoordinationExplorer";
 import type {
   Asset,
   Evaluation,
@@ -695,6 +696,9 @@ function App() {
                 </span>
                 <Icon name="arrow" />
               </a>
+              {evaluation?.coordination_certificate && (
+                <a className="coordination-link" href="#coordination">Explore each action’s contribution →</a>
+              )}
               <details className="response-more"><summary>Coverage & reasoning</summary>
               <details className="coverage-details">
                 <summary>Community coverage · full simulation</summary>
@@ -1098,6 +1102,15 @@ function App() {
 
 
         </div>
+
+        {evaluation?.coordination_certificate && (
+          <CoordinationExplorer
+            key={evaluation.coordination_certificate.certificate_sha256}
+            evaluation={evaluation}
+            certificate={evaluation.coordination_certificate}
+            stale={resultsStale || loading}
+          />
+        )}
 
         <ReceiptInspector
           className={resultsStale ? "results-stale" : ""}
