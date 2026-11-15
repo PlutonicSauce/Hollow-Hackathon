@@ -1006,5 +1006,1708 @@
         "detail": "scope and shared-formula limitations match this certificate version"
       }
     ]
+  },
+  "traces": {
+    "no_intervention": [
+      {
+        "minute": 0,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-power",
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 6
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "scrubber-water"
+            ],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": []
+      },
+      {
+        "minute": 1,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-power",
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 5
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "scrubber-water"
+            ],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": []
+      },
+      {
+        "minute": 2,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-power",
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 4
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "scrubber-water"
+            ],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": []
+      },
+      {
+        "minute": 3,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-power",
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 3
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "scrubber-water"
+            ],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": []
+      },
+      {
+        "minute": 4,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-power",
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 2
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "scrubber-water"
+            ],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": []
+      },
+      {
+        "minute": 5,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-power",
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 1
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "scrubber-water"
+            ],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": []
+      },
+      {
+        "minute": 6,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-power",
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "scrubber-power",
+              "scrubber-water"
+            ],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": []
+      }
+    ],
+    "static_priority": [
+      {
+        "minute": 0,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-power",
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 6
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": [
+          "assignment:[\"water-tanker\",\"air-scrubber\",\"scrubber-water\"]"
+        ]
+      },
+      {
+        "minute": 1,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-power",
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 5
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": [
+          "assignment:[\"water-tanker\",\"air-scrubber\",\"scrubber-water\"]"
+        ]
+      },
+      {
+        "minute": 2,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-power",
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 4
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": [
+          "assignment:[\"water-tanker\",\"air-scrubber\",\"scrubber-water\"]"
+        ]
+      },
+      {
+        "minute": 3,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-power",
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 3
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": [
+          "assignment:[\"water-tanker\",\"air-scrubber\",\"scrubber-water\"]"
+        ]
+      },
+      {
+        "minute": 4,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-power",
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 2
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": [
+          "assignment:[\"water-tanker\",\"air-scrubber\",\"scrubber-water\"]"
+        ]
+      },
+      {
+        "minute": 5,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-power",
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 1
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": [
+          "assignment:[\"water-tanker\",\"air-scrubber\",\"scrubber-water\"]"
+        ]
+      },
+      {
+        "minute": 6,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-power",
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "scrubber-power",
+              "scrubber-water"
+            ],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": []
+      }
+    ],
+    "greedy": [
+      {
+        "minute": 0,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-power",
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 6
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": [
+          "assignment:[\"water-tanker\",\"air-scrubber\",\"scrubber-water\"]"
+        ]
+      },
+      {
+        "minute": 1,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-power",
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 5
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": [
+          "assignment:[\"water-tanker\",\"air-scrubber\",\"scrubber-water\"]"
+        ]
+      },
+      {
+        "minute": 2,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-power",
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 4
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": [
+          "assignment:[\"water-tanker\",\"air-scrubber\",\"scrubber-water\"]"
+        ]
+      },
+      {
+        "minute": 3,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-power",
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 3
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": [
+          "assignment:[\"water-tanker\",\"air-scrubber\",\"scrubber-water\"]"
+        ]
+      },
+      {
+        "minute": 4,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-power",
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 2
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": [
+          "assignment:[\"water-tanker\",\"air-scrubber\",\"scrubber-water\"]"
+        ]
+      },
+      {
+        "minute": 5,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-power",
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 1
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": [
+          "assignment:[\"water-tanker\",\"air-scrubber\",\"scrubber-water\"]"
+        ]
+      },
+      {
+        "minute": 6,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-power",
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "scrubber-power",
+              "scrubber-water"
+            ],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": []
+      }
+    ],
+    "optimized": [
+      {
+        "minute": 0,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 6
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "scrubber-water"
+            ],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": [
+          "assignment:[\"mobile-generator\",\"pump\",\"pump-power\"]"
+        ]
+      },
+      {
+        "minute": 1,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 5
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": [
+          "assignment:[\"mobile-generator\",\"pump\",\"pump-power\"]",
+          "assignment:[\"water-tanker\",\"pump\",\"pump-source-water\"]"
+        ]
+      },
+      {
+        "minute": 2,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 4
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": [
+          "assignment:[\"mobile-generator\",\"pump\",\"pump-power\"]",
+          "assignment:[\"water-tanker\",\"pump\",\"pump-source-water\"]"
+        ]
+      },
+      {
+        "minute": 3,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 3
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": [
+          "assignment:[\"mobile-generator\",\"pump\",\"pump-power\"]",
+          "assignment:[\"water-tanker\",\"pump\",\"pump-source-water\"]"
+        ]
+      },
+      {
+        "minute": 4,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 2
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": [
+          "assignment:[\"mobile-generator\",\"pump\",\"pump-power\"]",
+          "assignment:[\"water-tanker\",\"pump\",\"pump-source-water\"]"
+        ]
+      },
+      {
+        "minute": 5,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 1
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": true,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": [
+          "assignment:[\"mobile-generator\",\"pump\",\"pump-power\"]",
+          "assignment:[\"water-tanker\",\"pump\",\"pump-source-water\"]"
+        ]
+      },
+      {
+        "minute": 6,
+        "assets": [
+          {
+            "asset_id": "aquifer",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": false,
+            "physical_fault_active": true,
+            "unsatisfied_dependency_group_ids": [],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "pump",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "pump-power",
+              "pump-source-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "battery-feeder"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "water-distribution",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "distribution-pump-water"
+            ],
+            "buffer_units": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "service_available": false,
+            "physical_fault_active": false,
+            "unsatisfied_dependency_group_ids": [
+              "scrubber-power",
+              "scrubber-water"
+            ],
+            "buffer_units": 0
+          }
+        ],
+        "active_fault_ids": [
+          "aquifer-physical-interruption",
+          "feeder-physical-outage"
+        ],
+        "active_intervention_ids": []
+      }
+    ]
   }
 }

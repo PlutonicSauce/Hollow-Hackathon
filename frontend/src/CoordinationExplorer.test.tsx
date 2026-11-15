@@ -1,6 +1,6 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { CoordinationExplorer } from "./CoordinationExplorer";
 import type { CoordinationCertificate, Evaluation } from "./types";
 import coupled from "./test/fixtures/coordination-coupled-utility.json";
@@ -19,11 +19,11 @@ describe("coordination counterfactuals", () => {
     const user = userEvent.setup();
     render(view());
     expect(score()).toHaveTextContent("1,100");
-    expect(screen.getAllByRole("img", {name: /5 of 6 minutes available/})).toHaveLength(3);
+    expect(screen.getAllByRole("img", {name: /5 of 6 minutes available/})).toHaveLength(2);
     await user.click(screen.getByRole("switch", {name: "Water tanker crew intervention"}));
     expect(score()).toHaveTextContent("Mobile generator crew only · same score as no actions");
     expect(within(score()).getByText("0", {exact:true})).toBeInTheDocument();
-    expect(screen.getAllByRole("img", {name: /0 of 6 minutes available/})).toHaveLength(3);
+    expect(screen.getAllByRole("img", {name: /0 of 6 minutes available/})).toHaveLength(2);
     await user.click(screen.getByRole("switch", {name: "Mobile generator crew intervention"}));
     expect(score()).toHaveTextContent("No actions");
     await user.click(screen.getByRole("switch", {name: "Water tanker crew intervention"}));
@@ -33,7 +33,7 @@ describe("coordination counterfactuals", () => {
     expect(score()).toHaveTextContent("1,100");
     expect(screen.getByRole("switch", {name: "Mobile generator crew intervention"})).toBeChecked();
     await user.click(screen.getByText("Minute details for deep shelter: air"));
-    expect(screen.getAllByText("Minute 6 (end boundary, not counted): unavailable")).toHaveLength(3);
+    expect(screen.getAllByText("Minute 6 (end boundary, not counted): unavailable")).toHaveLength(2);
   });
 
   it("supports keyboard toggles and blocks exploration of stale results", async () => {
@@ -77,4 +77,43 @@ describe("coordination counterfactuals", () => {
     expect(screen.getByText(/Do not treat this evidence as checked/)).toBeInTheDocument();
     expect(screen.queryByText(/10 certificate replay checks passed/)).not.toBeInTheDocument();
   });
+  it("keeps graph, selected minute and score on one recorded subset, including comparisons", async () => {
+    const user = userEvent.setup();
+    render(view());
+    fireEvent.change(screen.getByRole("slider", {name: "Counterfactual minute"}), {target:{value:"1"}});
+    const pump = () => screen.getByRole("button", {name: /Shared water pump/});
+    expect(pump()).toHaveTextContent("Service available");
+    await user.click(screen.getByRole("switch", {name:"Water tanker crew intervention"}));
+    expect(pump()).toHaveTextContent("Service unavailable");
+    expect(within(score()).getByText("0", {exact:true})).toBeInTheDocument();
+    expect(screen.getByRole("slider", {name:"Counterfactual minute"})).toHaveValue("1");
+    await user.click(screen.getByRole("button", {name:"Both actions 1,100"}));
+    expect(pump()).toHaveTextContent("Service available");
+    await user.click(screen.getByText("Compare other responses", {exact:true}));
+    await user.click(screen.getByRole("button", {name:"Greedy response 720"}));
+    expect(score()).toHaveTextContent("720");
+    expect(pump()).toHaveTextContent("Service unavailable");
+    expect(screen.getByText("Exploring a counterfactual")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", {name:"Static priority 720"}));
+    expect(score()).toHaveTextContent("720");
+    await user.click(screen.getByRole("button", {name:"Both actions 1,100"}));
+    expect(pump()).toHaveTextContent("Service available");
+    expect(screen.getByText("Recommended response", {exact:true})).toBeInTheDocument();
+  });
+
+  it("replays recorded boundaries and stops playback when inputs become stale", () => {
+    vi.useFakeTimers();
+    try {
+      const {rerender} = render(view());
+      fireEvent.click(screen.getByRole("button", {name:"Watch recovery"}));
+      act(() => vi.advanceTimersByTime(850));
+      expect(screen.getByRole("slider", {name:"Counterfactual minute"})).toHaveValue("1");
+      expect(screen.getByRole("button", {name:/Shared water pump/})).toHaveTextContent("Service available");
+      rerender(view(coupled,true));
+      act(() => vi.advanceTimersByTime(1700));
+      expect(screen.getByRole("slider", {name:"Counterfactual minute"})).toHaveValue("1");
+      expect(screen.getByRole("button", {name:"Watch recovery"})).toBeDisabled();
+    } finally {vi.useRealTimers();}
+  });
+
 });

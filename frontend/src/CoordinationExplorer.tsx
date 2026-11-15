@@ -1,17 +1,31 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CoordinationCertificate, Evaluation } from "./types";
+import { CoordinationNetwork } from "./CoordinationNetwork";
 import "./coordination.css";
 
 const number = (value: number) => value.toLocaleString("en-US");
 
 export function CoordinationExplorer({ evaluation, certificate, stale }: {
-  evaluation: Pick<Evaluation, "scenario" | "optimization" | "coordination_verification">;
+  evaluation: Pick<Evaluation, "scenario" | "optimization" | "coordination_verification"> & Partial<Pick<Evaluation, "traces">>;
   certificate: CoordinationCertificate;
   stale: boolean;
 }) {
   const scenario = evaluation.scenario;
   const ids = certificate.actions.map((action) => action.intervention_id);
   const [selected, setSelected] = useState(ids);
+  const [minute, setMinute] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [comparison, setComparison] = useState("subsets");
+  const choose = (subset: string[]) => { setSelected(subset); setComparison("subsets"); setPlaying(false); };
+  useEffect(() => { if (stale) setPlaying(false); }, [stale]);
+  useEffect(() => {
+    if (!playing || stale) return;
+    const timer = window.setInterval(() => setMinute((current) => {
+      if (current >= scenario.horizon_minutes) { setPlaying(false); return current; }
+      return current + 1;
+    }), 850);
+    return () => window.clearInterval(timer);
+  }, [playing, stale, scenario.horizon_minutes]);
   const row = certificate.subset_scores.find((candidate) =>
     candidate.intervention_ids.length === selected.length &&
     candidate.intervention_ids.every((id) => selected.includes(id)),
@@ -27,19 +41,29 @@ export function CoordinationExplorer({ evaluation, certificate, stale }: {
   const isolated = certificate.actions.length === 2 && certificate.kind === "complementary" &&
     certificate.subset_scores.filter((item) => item.intervention_ids.length === 1)
       .every((item) => item.weighted_service_person_minutes <= certificate.empty_score);
+  const fullRow = certificate.subset_scores.find((item) => item.intervention_ids.length === ids.length);
+  const recoveryMinute = Array.from({length:scenario.horizon_minutes}, (_, minute) => minute).find((minute) => scenario.demands.length > 0 && scenario.demands.every((demand) => fullRow?.availability.find((item) => item.asset_id === demand.served_by_asset_id)?.service_available[minute] === true));
   const report = evaluation.coordination_verification;
   const checked = report?.status === "passed" && report.checks.length > 0 && report.checks.every((check) => check.passed);
-  const targetIds = [...new Set(certificate.actions.map((action) => action.target_asset_id))]
-    .filter((id) => !scenario.demands.some((demand) => demand.served_by_asset_id === id));
   const greedyPlan = evaluation.optimization.baseline_comparisons.find((item) => item.baseline === "greedy")?.plan;
+  const baseline = evaluation.optimization.baseline_comparisons.find((item) => item.baseline === comparison);
+  const baselineTrace = evaluation.traces?.[comparison as keyof NonNullable<Evaluation["traces"]>];
+  const shownRow = comparison === "subsets" ? row : baseline && baselineTrace?.length === scenario.horizon_minutes + 1 && baselineTrace.every((step) => scenario.assets.every((asset) => step.assets.some((state) => state.asset_id === asset.id))) ? {
+    weighted_service_person_minutes: baseline.plan.objective.weighted_service_person_minutes,
+    served: baseline.plan.demand_metrics.map((metric) => ({demand_id: metric.demand_id, served_minutes: metric.served_minutes})),
+    availability: scenario.assets.map((asset) => ({asset_id: asset.id, service_available: baselineTrace.map((step) => step.assets.find((state) => state.asset_id === asset.id)!.service_available)})),
+  } : undefined;
+  const shownName = comparison === "subsets" ? subsetName(selected) : comparison === "greedy" ? "Greedy response" : "Static priority";
+  const recommendedSelected = comparison === "subsets" && selected.length === ids.length;
+  const selectedActions = comparison === "subsets" ? selected : baseline?.plan.interventions.map((action) => action.id) ?? [];
   const setsText = (sets: string[][]) => sets.map((set) => set.length ? set.map(resourceName).join(" + ") : "No actions").join("; ");
 
   return (
     <section id="coordination" className="coordination-section" aria-labelledby="coordination-title">
       <header className="coordination-heading">
-        <h2 id="coordination-title">{isolated ? "These actions only work together" : ids.length ? "What does each action contribute?" : "Service without assigned backup"}</h2>
+        <h1 id="coordination-title">{isolated ? "One crew can’t. Together, they can." : ids.length ? "What does each action contribute?" : "Service without assigned backup"}</h1>
         <p>{isolated
-          ? `Neither recommended action alone improves on no actions. Together they score ${number(certificate.plan_score)}. Switch actions off to explore why.`
+          ? `Neither crew can restore the shared pump alone. Together they score ${number(certificate.plan_score)}. ${recoveryMinute !== undefined ? `${[...new Set(scenario.demands.map((demand) => demand.service_type))].join(" and ").replace(/^./, (char) => char.toUpperCase())} services return at minute ${recoveryMinute} in this model.` : "Try either crew, then both."}`
           : "Explore subsets of the recommended response. Every outcome below comes from a Python simulator replay, using the same scenario inputs."}</p>
       </header>
       {!checked && <p role="alert" className="coord-stale">Certificate replay checks failed or were not supplied. Exploration is disabled; recompute before relying on these claims.</p>}
@@ -47,7 +71,7 @@ export function CoordinationExplorer({ evaluation, certificate, stale }: {
       <div className={`coord-explorer ${stale ? "results-stale" : ""}`}>
         <div className="coord-choices">
           <fieldset disabled={stale || !checked}>
-            <legend>What if only some actions happen?</legend>
+            <legend>{isolated ? "Choose crews for the shared pump" : "Explore recommended assignments"}</legend>
             {certificate.actions.map((action) => {
               const included = selected.includes(action.intervention_id);
               const asset = scenario.assets.find((item) => item.id === action.target_asset_id);
@@ -56,9 +80,7 @@ export function CoordinationExplorer({ evaluation, certificate, stale }: {
                 <label className={`coord-switch ${included ? "is-included" : ""}`} key={action.intervention_id}>
                   <input type="checkbox" role="switch" checked={included}
                     aria-label={`${resourceName(action.intervention_id)} intervention`}
-                    onChange={() => setSelected((current) => included
-                      ? current.filter((id) => id !== action.intervention_id)
-                      : [...current, action.intervention_id])} />
+                    onChange={() => choose(included ? selected.filter((id) => id !== action.intervention_id) : [...selected, action.intervention_id])} />
                   <span><strong>{resourceName(action.intervention_id)}</strong>
                     <span>{service} backup at {assetName(action.target_asset_id)}</span>
                     <small>{included ? "Included" : "Excluded"}</small></span>
@@ -71,39 +93,61 @@ export function CoordinationExplorer({ evaluation, certificate, stale }: {
             <summary>{certificate.subset_scores.length} replayed outcomes</summary>
             <div aria-label="Replayed action subsets">
               {certificate.subset_scores.map((subset) => {
-                const active = subset.intervention_ids.length === selected.length && subset.intervention_ids.every((id) => selected.includes(id));
+                const active = comparison === "subsets" && subset.intervention_ids.length === selected.length && subset.intervention_ids.every((id) => selected.includes(id));
                 return <button key={JSON.stringify(subset.intervention_ids)} type="button" disabled={stale || !checked}
-                  aria-pressed={active} onClick={() => setSelected(subset.intervention_ids)}>
+                  aria-pressed={active} onClick={() => choose(subset.intervention_ids)}>
                   <span>{subsetName(subset.intervention_ids)}</span><strong>{number(subset.weighted_service_person_minutes)}</strong>
                 </button>;
               })}
             </div>
           </details>
+          <details className="coord-comparisons"><summary>Compare other responses</summary><h3>Why the simpler response misses it</h3>
+            <p>Same crews. Different assignments.</p>
+            {evaluation.optimization.baseline_comparisons.filter((item) => item.baseline !== "no_intervention").map((item) =>
+              <button type="button" key={item.baseline} disabled={stale || !checked || !evaluation.traces}
+                aria-pressed={comparison === item.baseline} onClick={() => {setComparison(item.baseline); setPlaying(false);}}>
+                <span>{item.baseline === "greedy" ? "Greedy response" : "Static priority"}</span><strong>{number(item.plan.objective.weighted_service_person_minutes)}</strong>
+              </button>)}
+            <p className="coord-comparison-note">{comparison === "greedy" ? "Greedy adds the best immediate gain, one crew at a time." : comparison === "static_priority" ? "Static priority favors direct demand at each destination." : evaluation.optimization.exhaustive_search_complete ? "The recommended plan checks every feasible assignment in this supported search." : "Search incomplete. No optimality claim is established."}</p>
+          </details>
+          <a className="coord-audit-link" href="#decision-audit">Can I check this result? →</a>
         </div>
         <div className="coord-outcome">
-          <div role="status" aria-live="polite" aria-atomic="true" className="coord-score">
-            <strong>{row ? number(row.weighted_service_person_minutes) : "Unavailable"}</strong>
-            <span>weighted service-person-minutes</span>
-            <b>{subsetName(selected)}{row && row.weighted_service_person_minutes === certificate.empty_score ? " · same score as no actions" : ""}</b>
+          <div className="coord-view-heading"><span>{recommendedSelected ? "Recommended response" : "Exploring a counterfactual"}</span><strong>{shownName}</strong></div>
+          <CoordinationNetwork scenario={scenario} availability={shownRow?.availability} minute={minute} selectedActions={selectedActions}
+            actions={comparison === "subsets" ? evaluation.optimization.selected_plan.interventions : baseline?.plan.interventions ?? []} />
+          <div className="coord-replay">
+            <button type="button" disabled={stale || !checked || !shownRow} onClick={() => {if (minute >= scenario.horizon_minutes) setMinute(0); setPlaying(!playing);}}>{playing ? "Pause recovery" : "Watch recovery"}</button>
+            <label>Minute {minute} of {scenario.horizon_minutes}<input type="range" min="0" max={scenario.horizon_minutes} value={minute} disabled={stale || !checked} aria-label="Counterfactual minute" onChange={(event) => {setMinute(Number(event.target.value)); setPlaying(false);}} /></label>
+            <button type="button" disabled={stale || !checked} onClick={() => {setMinute(0);setPlaying(false);}}>Reset</button>
           </div>
-          {row ? <>
+          <p className="coord-observed">{scenario.demands.filter((demand) => shownRow?.availability.find((item) => item.asset_id === demand.served_by_asset_id)?.service_available[minute] === true).length} of {scenario.demands.length} community services available at minute {minute}</p>
+          <p className="coord-phase">{minute === 0 ? "Before response · Initial recorded state" : minute === scenario.horizon_minutes ? "End boundary · Not an additional service minute" : selectedActions.length ? "Response underway · Recorded simulator state" : "Without response · Recorded simulator state"}</p>
+          <div className="coord-results">
+
+          <div role="status" aria-live="polite" aria-atomic="true" className="coord-score">
+            <strong>{shownRow ? number(shownRow.weighted_service_person_minutes) : "Unavailable"}</strong>
+            <span>priority-weighted service-person-minutes</span><small>Across the full {scenario.horizon_minutes}-minute window</small>
+            <b>{shownName}{shownRow && shownRow.weighted_service_person_minutes === certificate.empty_score ? " · same score as no actions" : ""}</b>
+          </div>
+          {shownRow ? <>
             <div className="coord-demands">
               {scenario.demands.map((demand) => <ServiceTimeline key={demand.id}
                 title={`${demand.community_id.replaceAll("-", " ")}: ${demand.service_type}`}
-                population={demand.population} horizon={scenario.horizon_minutes}
-                series={row.availability.find((item) => item.asset_id === demand.served_by_asset_id)?.service_available}
-                servedMinutes={row.served.find((item) => item.demand_id === demand.id)?.served_minutes} />)}
+                population={demand.population} horizon={scenario.horizon_minutes} minute={minute}
+                series={shownRow.availability.find((item) => item.asset_id === demand.served_by_asset_id)?.service_available}
+                servedMinutes={shownRow.served.find((item) => item.demand_id === demand.id)?.served_minutes} />)}
             </div>
-            {targetIds.length > 0 && <div className="coord-shared"><h3>Shared infrastructure along the way</h3>
-              {targetIds.map((id) => <ServiceTimeline key={id} title={assetName(id)} horizon={scenario.horizon_minutes}
-                series={row.availability.find((item) => item.asset_id === id)?.service_available} />)}
-            </div>}
+
           </> : <p role="alert">The server did not provide a replay for this subset. Recompute before using this evidence.</p>}
+          </div>
           <div className="coord-time-key"><span>Minute 0</span><span>Minute {scenario.horizon_minutes}</span></div>
           <p className="coord-explainer">Solid segments: available. Hatched segments: unavailable. Each segment is one modeled minute. The final boundary adds no service time.</p>
           <p className="coord-explainer">Temporary backup supplies missing inputs; it does not repair physical faults. These toggles explore this response’s actions, not every possible assignment.</p>
         </div>
       </div>
+      <details className="coord-technical"><summary>Understand the coordination evidence</summary>
+      <p className="coord-definition">The service score adds population × available minutes × priority weight across demand records. The same community may need multiple services. This is a synthetic model score, not a count of people saved or evidence of real-world emergency safety.</p>
       <div className="coord-claims">
         <div><h3>{ids.length > 2 ? "Higher-order interaction" : "Joint benefit"}</h3>
           <p>{ids.length >= 2
@@ -140,19 +184,20 @@ export function CoordinationExplorer({ evaluation, certificate, stale }: {
         <p>Certificate SHA-256 <code>{certificate.certificate_sha256}</code></p>
         <details><summary>Inspect certificate JSON</summary><pre>{JSON.stringify(certificate, null, 2)}</pre></details>
       </details>
+      </details>
     </section>
   );
 }
 
-function ServiceTimeline({ title, population, horizon, series, servedMinutes }: {
-  title: string; population?: number; horizon: number; series?: boolean[]; servedMinutes?: number;
+function ServiceTimeline({ title, population, horizon, series, servedMinutes, minute }: {
+  title: string; population?: number; horizon: number; series?: boolean[]; servedMinutes?: number; minute?: number;
 }) {
   if (!series || series.length !== horizon + 1) return <p>{title}: replay series unavailable.</p>;
   const served = servedMinutes ?? series.slice(0, horizon).filter(Boolean).length;
   return <div className="coord-service">
     <div className="coord-service-label"><strong>{title}</strong><span>{population !== undefined ? `${number(population)} modeled people · ` : ""}{served} of {horizon} minutes available</span></div>
     <div className="coord-intervals" role="img" aria-label={`${title}: ${served} of ${horizon} minutes available`} style={{gridTemplateColumns: `repeat(${horizon}, minmax(0, 1fr))`}}>
-      {series.slice(0, horizon).map((available, minute) => <span key={minute} className={available ? "interval-available" : "interval-unavailable"} title={`Minute ${minute}–${minute + 1}: ${available ? "available" : "unavailable"}`} />)}
+      {series.slice(0, horizon).map((available, minuteIndex) => <span key={minuteIndex} className={`${available ? "interval-available" : "interval-unavailable"} ${minute === minuteIndex ? "at-minute" : ""}`} title={`Minute ${minuteIndex}–${minuteIndex + 1}: ${available ? "available" : "unavailable"}`} />)}
     </div>
     <details className="coord-minute-details"><summary>Minute details for {title}</summary>
       <ol>{series.map((available, minute) => <li key={minute}>Minute {minute}{minute === horizon ? " (end boundary, not counted)" : `–${minute + 1}`}: {available ? "available" : "unavailable"}</li>)}</ol>

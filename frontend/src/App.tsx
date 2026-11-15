@@ -396,7 +396,7 @@ function App() {
     ? `${disruptedServices.join(" and ").replace(/^./, (char) => char.toUpperCase())} services face disruption.`
     : "Essential services need a response.";
   return (
-    <main className={`app-shell ${playing ? "is-playing" : ""}`}>
+    <main className={`app-shell discovery-app ${playing ? "is-playing" : ""}`}>
       <header className="topbar">
         <a className="brand" href="#" aria-label="LIFELINE home">
           <span className="brand-mark" aria-hidden="true">
@@ -408,8 +408,7 @@ function App() {
         </a>
         <span className="product-category">Infrastructure resilience</span>
         <nav className="workspace-nav" aria-label="Workspace">
-          <a href="#network">Explore</a>
-          <a href="#response">Response</a>
+          <a href="#coordination">Explore</a>
           <a href="#decision-audit">Decision audit</a>
         </nav>
         <div className="topbar-right">
@@ -442,7 +441,7 @@ function App() {
           <p className="incident-kicker">
             {choice?.name ?? "Coupled utility failure"} · Synthetic scenario
           </p>
-          <h1 id="incident-title">{incidentTitle}</h1>
+          <h2 id="incident-title" className={evaluation?.coordination_certificate ? "sr-only" : ""}>{incidentTitle}</h2>
           <div className="incident-context">
             <p>
               <span className="incident-failure">
@@ -471,7 +470,7 @@ function App() {
           </div>
         </section>
 
-        <div className="run-status" role="status" aria-live="polite">
+        <div className={`run-status ${evaluation && !resultsStale && !loading ? "sr-only" : ""}`} role="status" aria-live="polite">
           <span className={loading ? "status-working" : ""}>
             {loading
               ? scenario
@@ -523,6 +522,17 @@ function App() {
           </div>
         )}
 
+        {evaluation?.coordination_certificate && (
+          <CoordinationExplorer
+            key={evaluation.coordination_certificate.certificate_sha256}
+            evaluation={evaluation}
+            certificate={evaluation.coordination_certificate}
+            stale={resultsStale || loading}
+          />
+        )}
+
+        {!evaluation?.coordination_certificate && <details className="engineering-workspace">
+          <summary>Inspect full network, assignments and simulation diagnostics</summary>
         <div className="experience-grid">
           <section
             id="response"
@@ -1103,14 +1113,7 @@ function App() {
 
         </div>
 
-        {evaluation?.coordination_certificate && (
-          <CoordinationExplorer
-            key={evaluation.coordination_certificate.certificate_sha256}
-            evaluation={evaluation}
-            certificate={evaluation.coordination_certificate}
-            stale={resultsStale || loading}
-          />
-        )}
+        </details>}
 
         <ReceiptInspector
           className={resultsStale ? "results-stale" : ""}
@@ -1931,6 +1934,8 @@ function ReceiptInspector({
       </div>
       <div className="audit-grid">
         <div className="audit-explanation">
+          <p>Replay the recommended plan and check the alternatives under the chosen policy.</p>
+          <details className="audit-method"><summary>How the Decision Receipt audit works</summary>
           <p>
             The verifier derives outcomes from the replay and independently
             enumerates the supported plans. It does not call the optimizer.
@@ -1940,6 +1945,7 @@ function ReceiptInspector({
             consistency, not physical accuracy, operational safety or
             authorship.
           </p>
+          </details>
           <div className="receipt-summary">
             <span>Search</span>
             <strong>
@@ -1980,6 +1986,7 @@ function ReceiptInspector({
                 : "Verification found issues"
               : "Seven checks. One replayable record."}
           </h3>
+          <details open={Boolean(verification)}><summary>Inspect all seven checks</summary>
           <ul className="verification-checks">
             {CHECKS.map(([key, label]) => {
               const status = verification?.[key] ?? "not_checked";
@@ -1998,6 +2005,7 @@ function ReceiptInspector({
               );
             })}
           </ul>
+          </details>
           {verification?.issues.length ? (
             <ul className="verification-issues">
               {verification.issues.map((issue, index) => (
