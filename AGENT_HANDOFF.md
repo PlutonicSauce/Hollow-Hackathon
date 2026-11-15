@@ -74,4 +74,6 @@ Milestone 6 permits the single free Render public demo, its security limits, and
 
 ## Launch frontend redesign
 
-The current UI uses a map-first graphite workspace, visible plan radio choices, linked asset inspection and community/timeline status, then response details and Decision Receipt audit. Draft edits require native modal confirmation and do not alter the displayed evaluated run. Preserve the distinction between per-minute availability and whole-horizon coverage. `DESIGN_REVIEW.md` records the design resources, interaction invariants, validation and limitations. Backend semantics and deployment limits are unchanged.
+The current UI uses a light-first infrastructure workspace, visible plan radio choices, linked asset inspection and community/timeline status, then response details and Decision Receipt audit. Draft edits require native modal confirmation and do not alter the displayed evaluated run. Preserve the distinction between per-minute availability and whole-horizon coverage. `DESIGN_REVIEW.md` records the design resources, interaction invariants, validation and limitations. Backend semantics and deployment limits are unchanged.
+
+The rejected graphite direction has been replaced with light surfaces, circular service markers, one recommendation, on-demand comparisons and native CSS/SVG motion. Graph motion is tied to real trace states and honors reduced-motion preferences. The map is explicitly schematic. See the current `DESIGN_REVIEW.md`; do not restore the dark layout.

@@ -299,8 +299,8 @@ describe("LIFELINE incident experience", () => {
     ).toBeInTheDocument();
     expect(
       screen
-        .getByText("weighted service-person-minutes")
-        .closest(".score-line"),
+        .getByText(/weighted service-person-minutes · not lives saved/)
+        .closest(".benefit-block"),
     ).toHaveTextContent("20");
     expect(
       screen.getByText(
@@ -370,7 +370,7 @@ describe("LIFELINE incident experience", () => {
     expect(
       await screen.findByRole("radio", { name: /Recommended/ }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Search incomplete")).toBeInTheDocument();
+    expect(screen.getAllByText("Search incomplete")).toHaveLength(2);
     expect(screen.getByText("Search").parentElement).toHaveTextContent(
       "bound reached",
     );
@@ -398,6 +398,23 @@ describe("LIFELINE incident experience", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("Generator crew arrives")).toBeInTheDocument();
+  });
+
+  it("compares responses from the recommendation without replacing its measured benefit", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByRole("radio", { name: /Recommended/ });
+    expect(screen.getByText("100% higher service score")).toBeInTheDocument();
+    await user.click(
+      screen.getByText("Compare all responses", { exact: true }),
+    );
+    await user.click(screen.getByRole("button", { name: /^No response 0/ }));
+    expect(screen.getByRole("radio", { name: /^No response/ })).toBeChecked();
+    expect(
+      screen.getByRole("group", { name: /graph for No response/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("100% higher service score")).toBeInTheDocument();
+    expect(api.evaluate).toHaveBeenCalledTimes(1);
   });
 
   it("shows invalid verification results from the backend", async () => {
@@ -453,7 +470,9 @@ describe("LIFELINE incident experience", () => {
       screen.getByRole("button", { name: "Verify this decision" }),
     ).toBeDisabled();
     await user.click(screen.getByRole("button", { name: "Retry evaluation" }));
-    expect(screen.getByRole("dialog")).toHaveTextContent("Review response changes");
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      "Review response changes",
+    );
     expect(api.evaluate).toHaveBeenCalledTimes(2);
   });
 
@@ -474,7 +493,7 @@ describe("LIFELINE incident experience", () => {
     await user.tab();
     expect(screen.getByLabelText(/active scenario/i)).toHaveFocus();
     await user.tab();
-    expect(screen.getByRole("radio", { name: /Recommended/ })).toHaveFocus();
+    expect(screen.getByRole("button", { name: /^Grid feeder:/ })).toHaveFocus();
   });
   it("stops replay at the final boundary instead of silently returning to the failure", async () => {
     render(<App />);

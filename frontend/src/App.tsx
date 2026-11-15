@@ -374,8 +374,18 @@ function App() {
     tolerancePpm,
   );
 
+  const disruptedServices = [
+    ...new Set(
+      evaluation?.no_intervention_simulation.demand_metrics
+        .filter((metric) => metric.coverage_parts_per_million < 1_000_000)
+        .map((metric) => metric.service_type) ?? [],
+    ),
+  ];
+  const incidentTitle = disruptedServices.length
+    ? `${disruptedServices.join(" and ").replace(/^./, (char) => char.toUpperCase())} services face disruption.`
+    : "Essential services need a response.";
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${playing ? "is-playing" : ""}`}>
       <header className="topbar">
         <a className="brand" href="#" aria-label="LIFELINE home">
           <span className="brand-mark" aria-hidden="true">
@@ -418,51 +428,35 @@ function App() {
       </header>
       <div className="content">
         <section className="incident-header" aria-labelledby="incident-title">
-          <h1 id="incident-title">
-            {choice?.name ?? "Coupled utility failure"}
-          </h1>
-          <p className="incident-summary">
-            {choice?.description ??
-              "Explore how infrastructure failures spread, and where limited response teams can help."}
+          <p className="incident-kicker">
+            {choice?.name ?? "Coupled utility failure"} · Synthetic scenario
           </p>
+          <h1 id="incident-title">{incidentTitle}</h1>
           <div className="incident-context">
-            <div>
-              <span className="context-label">What failed</span>
-              <p>
-                {displayScenario?.faults.length
-                  ? displayScenario.faults
-                      .map(
-                        (fault) =>
-                          displayScenario.assets.find(
-                            (asset) => asset.id === fault.asset_id,
-                          )?.name ?? fault.id,
-                      )
-                      .join(" · ")
-                  : "No physical faults in this scenario."}
-              </p>
-            </div>
-            <div>
-              <span className="context-label">Who depends on it</span>
-              <p>
-                {displayScenario?.demands.length
-                  ? displayScenario.demands
-                      .map(
-                        (demand) =>
-                          `${formatNumber(demand.population)} ${demand.community_id.replaceAll("-", " ")} · ${demand.service_type}`,
-                      )
-                      .join(" / ")
-                  : "Loading modeled service needs…"}
-              </p>
-            </div>
-            <div className="scenario-facts">
-              <span>
-                {displayScenario?.horizon_minutes ?? "—"} minute simulation
+            <p>
+              <span className="incident-failure">
+                <Icon name="warning" /> What failed
               </span>
-              <span>
-                {displayScenario?.resources.length ?? "—"} response teams ·
-                synthetic scenario
-              </span>
-            </div>
+              {displayScenario?.faults
+                .map((fault) =>
+                  humanAssetName(
+                    displayScenario.assets.find(
+                      (asset) => asset.id === fault.asset_id,
+                    )?.name ?? fault.id,
+                  ),
+                )
+                .join(" and ") || "Loading the incident…"}{" "}
+              offline.
+            </p>
+            <p>
+              <span className="incident-failure">Who is affected</span>
+              {displayScenario?.demands
+                .map(
+                  (demand) =>
+                    `${demand.community_id.replaceAll("-", " ")}: ${demand.service_type} for ${formatNumber(demand.population)} modeled people`,
+                )
+                .join(" · ")}
+            </p>
           </div>
         </section>
 
@@ -470,12 +464,14 @@ function App() {
           <span className={loading ? "status-working" : ""}>
             {loading
               ? scenario
-                ? "Evaluating response plans with the Python engine…"
+                ? "Comparing response options…"
                 : "Loading the scenario…"
               : resultsStale
                 ? "Inputs have changed"
                 : evaluation
-                  ? `${formatNumber(evaluation.optimization.plans_evaluated)} plans checked · ${evaluation.optimization.exhaustive_search_complete ? "exhaustive search complete" : "search incomplete"}`
+                  ? evaluation.optimization.exhaustive_search_complete
+                    ? "Response ready to explore"
+                    : "Search incomplete"
                   : "Ready to evaluate"}
           </span>
           <span>
@@ -484,7 +480,7 @@ function App() {
               : resultsStale
                 ? "Showing the previous run until you confirm and recompute."
                 : evaluation
-                  ? `Exact search: ${(evaluation.optimization.computation_time_ns / 1_000_000).toFixed(1)} ms · measured by the backend`
+                  ? `${displayScenario?.horizon_minutes ?? "—"} minute replay · Synthetic inputs`
                   : ""}
           </span>
         </div>
@@ -514,190 +510,199 @@ function App() {
           </div>
         )}
 
-        <section
-          className="network-panel"
-          id="network"
-          aria-labelledby="network-title"
-        >
-          <div className="section-heading">
-            <div>
-              <h2 id="network-title">Explore the cascade</h2>
-              <p className="section-note">
-                Select infrastructure to connect its inputs, consequences and
-                events.
-              </p>
+        <div className="experience-grid">
+          <section
+            className="network-panel"
+            id="network"
+            aria-labelledby="network-title"
+          >
+            <div className="section-heading">
+              <div>
+                <h2 id="network-title">
+                  {inspectedAsset
+                    ? humanAssetName(inspectedAsset.name)
+                    : "Follow the connections"}
+                </h2>
+                <p className="section-note">
+                  {inspectedAsset
+                    ? inspectedAsset.dependency_groups.length
+                      ? `Needs ${inspectedAsset.dependency_groups.map((group) => `${group.service_type} from ${group.provider_asset_ids.map((id) => humanAssetName(displayScenario?.assets.find((asset) => asset.id === id)?.name ?? id)).join(" or ")}`).join(" and ")}.`
+                      : `Source supply for ${inspectedAsset.provides}.`
+                    : "Select a place to see its dependencies and the communities it supports."}
+                </p>
+              </div>
+              <span className="viewing-plan">
+                {PLAN_LABELS[planKey]} · minute {minute}
+              </span>
             </div>
-            <span className="viewing-plan">
-              {PLAN_LABELS[planKey]} · minute {minute}
-            </span>
-          </div>
-          <fieldset className="plan-switcher" disabled={!evaluation || loading}>
-            <legend className="sr-only">Response plan</legend>
-            {planOptions.length
-              ? planOptions.map((option) => (
-                  <label
-                    className={`comparison-row ${planKey === option.key ? "comparison-selected" : ""}`}
-                    key={option.key}
-                  >
-                    <input
-                      type="radio"
-                      name="response-plan"
-                      value={option.key}
-                      checked={planKey === option.key}
-                      onChange={() => {
-                        setPlanKey(option.key);
-                        setPlaying(false);
-                      }}
-                    />
-                    <span className="comparison-label">{option.label}</span>
-                    <strong>{formatNumber(option.score)}</strong>
-                    <span className="comparison-track">
-                      <span
-                        style={{
-                          width: `${(option.score / Math.max(1, evaluation?.optimization.best_primary_score ?? 1, ...planOptions.map((item) => item.score))) * 100}%`,
+
+            <div className="network-workspace">
+              <div className="map-area">
+                {displayScenario ? (
+                  <DependencyMap
+                    assets={displayScenario.assets}
+                    step={
+                      currentStep ?? {
+                        minute: 0,
+                        assets: [],
+                        active_fault_ids: [],
+                        active_intervention_ids: [],
+                      }
+                    }
+                    demands={displayScenario.demands}
+                    selectedPlan={selectedPlan}
+                    planLabel={PLAN_LABELS[planKey]}
+                    loading={loading || resultsStale}
+                    playing={playing}
+                    selectedAssetId={selectedAssetId}
+                    linkedAssets={linkedAssets}
+                    onSelect={setSelectedAssetId}
+                  />
+                ) : (
+                  <div className="map-placeholder">Loading infrastructure…</div>
+                )}
+                <div
+                  className="live-consequences"
+                  aria-label="Community services at selected minute"
+                >
+                  {displayScenario?.demands.map((demand) => {
+                    const state = currentStep?.assets.find(
+                      (item) => item.asset_id === demand.served_by_asset_id,
+                    );
+                    return (
+                      <button
+                        type="button"
+                        key={demand.id}
+                        onClick={() =>
+                          setSelectedAssetId(demand.served_by_asset_id)
+                        }
+                        className={`${!state ? "service-pending" : state.service_available ? "service-available" : "service-unavailable"} ${selectedAssetId && !linkedAssets.has(demand.served_by_asset_id) ? "context-dimmed" : ""}`}
+                      >
+                        <span>{demand.community_id.replaceAll("-", " ")}</span>
+                        <strong>
+                          {demand.service_type} ·{" "}
+                          {state
+                            ? state.service_available
+                              ? "available"
+                              : "unavailable"
+                            : "pending"}
+                        </strong>
+                        <small>
+                          Minute {minute} · {formatNumber(demand.population)}{" "}
+                          modeled people
+                        </small>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="legend" aria-label="Asset status legend">
+                  <span>
+                    <i className="legend-good" />
+                    Working
+                  </span>
+                  <span>
+                    <i className="legend-warn" />
+                    Reserve
+                  </span>
+                  <span>
+                    <i className="legend-backup" />
+                    Backup
+                  </span>
+                  <span>
+                    <i className="legend-down" />
+                    Unavailable
+                  </span>
+                  <span>
+                    <i className="legend-fault" />
+                    Physical fault
+                  </span>
+                </div>
+                <p className="map-caption">
+                  Schematic infrastructure, not a geographic map. Paths show
+                  dependencies, not physical flows.
+                </p>
+              </div>
+            </div>
+            <fieldset
+              className="plan-switcher"
+              disabled={!evaluation || loading}
+            >
+              <legend className="sr-only">Response plan</legend>
+              {planOptions.length
+                ? planOptions.map((option) => (
+                    <label
+                      className={`comparison-row ${planKey === option.key ? "comparison-selected" : ""}`}
+                      key={option.key}
+                    >
+                      <input
+                        type="radio"
+                        name="response-plan"
+                        value={option.key}
+                        checked={planKey === option.key}
+                        onChange={() => {
+                          setPlanKey(option.key);
+                          setPlaying(false);
                         }}
                       />
-                    </span>
-                  </label>
-                ))
-              : [
-                  "No response",
-                  "Static priority",
-                  "Greedy response",
-                  "Recommended",
-                ].map((label) => (
-                  <div
-                    className="comparison-row comparison-skeleton"
-                    key={label}
+                      <span className="comparison-label">{option.label}</span>
+                    </label>
+                  ))
+                : [
+                    "No response",
+                    "Static priority",
+                    "Greedy response",
+                    "Recommended",
+                  ].map((label) => (
+                    <div
+                      className="comparison-row comparison-skeleton"
+                      key={label}
+                    >
+                      <span>{label}</span>
+                      <span>—</span>
+                    </div>
+                  ))}
+            </fieldset>
+            <div className="map-toolbar">
+              {" "}
+              <div className="timeline-title">
+                <h3>Replay service delivery</h3>
+                <div className="replay-controls">
+                  <button
+                    type="button"
+                    className="play-button"
+                    onClick={() => {
+                      if (minute >= (displayScenario?.horizon_minutes ?? 0))
+                        setMinute(0);
+                      setPlaying((value) => !value);
+                    }}
+                    disabled={!evaluation}
+                    aria-label={playing ? "Pause replay" : "Play replay"}
                   >
-                    <span>{label}</span>
-                    <span>—</span>
-                  </div>
-                ))}
-          </fieldset>
-          <div className="map-toolbar">
-            {" "}
-            <div className="timeline-title">
-              <h3>Replay service delivery</h3>
-              <div className="replay-controls">
-                <button
-                  type="button"
-                  className="play-button"
-                  onClick={() => {
-                    if (minute >= (displayScenario?.horizon_minutes ?? 0))
-                      setMinute(0);
-                    setPlaying((value) => !value);
+                    <Icon name={playing ? "pause" : "play"} />
+                    <span>{playing ? "Pause" : "Play changes"}</span>
+                  </button>
+                </div>
+              </div>
+              <div className="scrubber">
+                <span>0 min</span>
+                <input
+                  aria-label="Simulation minute"
+                  type="range"
+                  min={0}
+                  max={displayScenario?.horizon_minutes ?? 1}
+                  value={Math.min(
+                    minute,
+                    displayScenario?.horizon_minutes ?? 0,
+                  )}
+                  onChange={(event) => {
+                    setPlaying(false);
+                    setMinute(Number(event.target.value));
                   }}
                   disabled={!evaluation}
-                  aria-label={playing ? "Pause replay" : "Play replay"}
-                >
-                  <Icon name={playing ? "pause" : "play"} />
-                  <span>{playing ? "Pause" : "Play changes"}</span>
-                </button>
-              </div>
-            </div>
-            <div className="scrubber">
-              <span>0 min</span>
-              <input
-                aria-label="Simulation minute"
-                type="range"
-                min={0}
-                max={displayScenario?.horizon_minutes ?? 1}
-                value={Math.min(minute, displayScenario?.horizon_minutes ?? 0)}
-                onChange={(event) => {
-                  setPlaying(false);
-                  setMinute(Number(event.target.value));
-                }}
-                disabled={!evaluation}
-              />
-              <span>{displayScenario?.horizon_minutes ?? "—"} min</span>
-              <output aria-live="off">Minute {minute}</output>
-            </div>
-          </div>
-          <div className="network-workspace">
-            <div className="map-area">
-              {displayScenario ? (
-                <DependencyMap
-                  assets={displayScenario.assets}
-                  step={
-                    currentStep ?? {
-                      minute: 0,
-                      assets: [],
-                      active_fault_ids: [],
-                      active_intervention_ids: [],
-                    }
-                  }
-                  demands={displayScenario.demands}
-                  selectedPlan={selectedPlan}
-                  planLabel={PLAN_LABELS[planKey]}
-                  loading={loading || resultsStale}
-                  selectedAssetId={selectedAssetId}
-                  linkedAssets={linkedAssets}
-                  onSelect={setSelectedAssetId}
                 />
-              ) : (
-                <div className="map-placeholder">Loading infrastructure…</div>
-              )}
-              <div
-                className="live-consequences"
-                aria-label="Community services at selected minute"
-              >
-                {displayScenario?.demands.map((demand) => {
-                  const state = currentStep?.assets.find(
-                    (item) => item.asset_id === demand.served_by_asset_id,
-                  );
-                  return (
-                    <button
-                      type="button"
-                      key={demand.id}
-                      onClick={() =>
-                        setSelectedAssetId(demand.served_by_asset_id)
-                      }
-                      className={`${!state ? "service-pending" : state.service_available ? "service-available" : "service-unavailable"} ${selectedAssetId && !linkedAssets.has(demand.served_by_asset_id) ? "context-dimmed" : ""}`}
-                    >
-                      <span>{demand.community_id.replaceAll("-", " ")}</span>
-                      <strong>
-                        {demand.service_type} ·{" "}
-                        {state
-                          ? state.service_available
-                            ? "available"
-                            : "unavailable"
-                          : "pending"}
-                      </strong>
-                      <small>
-                        Minute {minute} · {formatNumber(demand.population)}{" "}
-                        modeled people
-                      </small>
-                    </button>
-                  );
-                })}
+                <span>{displayScenario?.horizon_minutes ?? "—"} min</span>
+                <output aria-live="off">Minute {minute}</output>
               </div>
-              <div className="legend" aria-label="Asset status legend">
-                <span>
-                  <i className="legend-good" />
-                  Working
-                </span>
-                <span>
-                  <i className="legend-warn" />
-                  Reserve
-                </span>
-                <span>
-                  <i className="legend-backup" />
-                  Backup
-                </span>
-                <span>
-                  <i className="legend-down" />
-                  Unavailable
-                </span>
-                <span>
-                  <i className="legend-fault" />
-                  Physical fault
-                </span>
-              </div>
-              <p className="map-caption">
-                Arrows follow service dependencies. Dashed outlines indicate
-                backup support, not physical repair.
-              </p>
             </div>
             <aside
               className="asset-inspector"
@@ -780,238 +785,279 @@ function App() {
                     communities depend on it, and when its events occur.
                   </p>
                   <p className="inspector-hint">
-                    Map selection also highlights connected service coverage
-                    below.
+                    Map selection also highlights connected community services.
                   </p>
                 </>
               )}
             </aside>
-          </div>
-          <div className="timeline-panel">
-            <div className="timeline-events" aria-label="Scenario events">
-              {displayScenario?.faults.map((fault) => (
-                <button
-                  type="button"
-                  className={`timeline-event event-fault ${selectedAssetId && !linkedAssets.has(fault.asset_id) ? "context-dimmed" : ""}`}
-                  key={fault.id}
-                  disabled={!evaluation}
-                  onClick={() => {
-                    setSelectedAssetId(fault.asset_id);
-                    setMinute(fault.start_minute);
-                    setPlaying(false);
-                  }}
-                >
-                  <span>Minute {fault.start_minute}</span>
-                  <strong>
-                    {
-                      displayScenario.assets.find(
-                        (asset) => asset.id === fault.asset_id,
-                      )?.name
-                    }
-                  </strong>
-                  <small>
-                    Physical failure
-                    {fault.end_minute !== null
-                      ? ` · ends at minute ${fault.end_minute}`
-                      : ""}
-                  </small>
-                </button>
-              ))}
-              {selectedPlan?.interventions.map((action) => {
-                const resource = displayScenario?.resources.find(
-                  (item) => item.id === action.resource_id,
-                );
-                const route = resource?.travel_times.find(
-                  (item) => item.asset_id === action.target_asset_id,
-                );
-                const arrival =
-                  action.dispatch_minute +
-                  (route?.travel_minutes ?? 0) +
-                  (route?.setup_minutes ?? 0);
-                return (
+            <div className="timeline-panel">
+              <div className="timeline-events" aria-label="Scenario events">
+                {displayScenario?.faults.map((fault) => (
                   <button
                     type="button"
-                    className={`timeline-event event-response ${selectedAssetId && !linkedAssets.has(action.target_asset_id) ? "context-dimmed" : ""}`}
-                    key={action.id}
+                    className={`timeline-event event-fault ${selectedAssetId && !linkedAssets.has(fault.asset_id) ? "context-dimmed" : ""}`}
+                    key={fault.id}
+                    disabled={!evaluation}
                     onClick={() => {
-                      setSelectedAssetId(action.target_asset_id);
-                      setMinute(arrival);
+                      setSelectedAssetId(fault.asset_id);
+                      setMinute(fault.start_minute);
                       setPlaying(false);
                     }}
                   >
-                    <span>Minute {arrival}</span>
+                    <span>Minute {fault.start_minute}</span>
                     <strong>
-                      {resource?.name ?? action.resource_id} arrives
-                    </strong>
-                    <small>
-                      Backup at{" "}
                       {
-                        displayScenario?.assets.find(
-                          (asset) => asset.id === action.target_asset_id,
+                        displayScenario.assets.find(
+                          (asset) => asset.id === fault.asset_id,
                         )?.name
                       }
+                    </strong>
+                    <small>
+                      Physical failure
+                      {fault.end_minute !== null
+                        ? ` · ends at minute ${fault.end_minute}`
+                        : ""}
                     </small>
                   </button>
-                );
-              })}
+                ))}
+                {selectedPlan?.interventions.map((action) => {
+                  const resource = displayScenario?.resources.find(
+                    (item) => item.id === action.resource_id,
+                  );
+                  const route = resource?.travel_times.find(
+                    (item) => item.asset_id === action.target_asset_id,
+                  );
+                  const arrival =
+                    action.dispatch_minute +
+                    (route?.travel_minutes ?? 0) +
+                    (route?.setup_minutes ?? 0);
+                  return (
+                    <button
+                      type="button"
+                      className={`timeline-event event-response ${selectedAssetId && !linkedAssets.has(action.target_asset_id) ? "context-dimmed" : ""}`}
+                      key={action.id}
+                      onClick={() => {
+                        setSelectedAssetId(action.target_asset_id);
+                        setMinute(arrival);
+                        setPlaying(false);
+                      }}
+                    >
+                      <span>Minute {arrival}</span>
+                      <strong>
+                        {resource?.name ?? action.resource_id} arrives
+                      </strong>
+                      <small>
+                        Backup at{" "}
+                        {
+                          displayScenario?.assets.find(
+                            (asset) => asset.id === action.target_asset_id,
+                          )?.name
+                        }
+                      </small>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section
-          id="response"
-          className={`decision-overview ${resultsStale ? "results-stale" : ""}`}
-          aria-label="Recommended response and comparison"
-          aria-busy={loading}
-        >
-          <div className="response-panel">
-            <div className="section-heading">
-              <h2>Recommended response</h2>
-              <span className="search-state">
-                {evaluation
-                  ? evaluation.optimization.exhaustive_search_complete
-                    ? "All feasible plans compared"
-                    : "Search incomplete"
-                  : "Waiting for computation"}
-              </span>
+          <section
+            id="response"
+            className={`response-sheet ${resultsStale ? "results-stale" : ""}`}
+            aria-label="Recommended response and comparison"
+            aria-busy={loading}
+          >
+            {evaluation &&
+              !evaluation.optimization.exhaustive_search_complete && (
+                <p className="search-state">Search incomplete</p>
+              )}
+            <div className="response-eyebrow">
+              <span className="response-check">
+                <Icon name="check" />
+              </span>{" "}
+              Recommended response
             </div>
-            {evaluation && recommended ? (
-              <>
-                <div className="score-line">
-                  <strong className="score">{formatNumber(score)}</strong>
-                  <div>
-                    <span>weighted service-person-minutes</span>
-                    <span className="score-delta">
-                      {formatSigned(score - bestBaseline)} against the strongest
-                      baseline
-                    </span>
-                  </div>
+            <h2>
+              {recommended?.interventions.length
+                ? new Set(
+                    recommended.interventions.map(
+                      (action) => action.target_asset_id,
+                    ),
+                  ).size === 1
+                  ? `Support the ${humanAssetName(displayScenario?.assets.find((asset) => asset.id === recommended.interventions[0].target_asset_id)?.name ?? "shared infrastructure").toLowerCase()}`
+                  : "Coordinate the available teams"
+                : evaluation
+                  ? "Keep your teams available"
+                  : "Finding the right response"}
+            </h2>
+            <p className="response-intro">
+              {evaluation
+                ? recommended?.interventions.length
+                  ? `Use ${recommended.interventions.length} ${recommended.interventions.length === 1 ? "team" : "teams"} to cover ${[...new Set(recommended.interventions.map((action) => displayScenario?.assets.find((asset) => asset.id === action.target_asset_id)?.dependency_groups.find((group) => group.id === action.dependency_group_id)?.service_type).filter(Boolean))].join(" and ")} inputs with temporary backup.`
+                  : "No supported dispatch improves this scenario’s objective."
+                : "The engine is comparing the supported assignments."}
+            </p>
+            <details className="dispatch-details">
+              <summary>
+                {recommended
+                  ? `${recommended.interventions.length} ${recommended.interventions.length === 1 ? "team" : "teams"} · View assignments`
+                  : "Response assignments"}
+              </summary>
+              <div className="dispatch-list">
+                {recommended?.interventions.map((action) => {
+                  const resource = displayScenario?.resources.find(
+                    (item) => item.id === action.resource_id,
+                  );
+                  const asset = displayScenario?.assets.find(
+                    (item) => item.id === action.target_asset_id,
+                  );
+                  const route = resource?.travel_times.find(
+                    (item) => item.asset_id === action.target_asset_id,
+                  );
+                  const group = asset?.dependency_groups.find(
+                    (item) => item.id === action.dependency_group_id,
+                  );
+                  return (
+                    <button
+                      className="dispatch-row"
+                      type="button"
+                      key={action.id}
+                      onClick={() => {
+                        setSelectedAssetId(action.target_asset_id);
+                        document
+                          .getElementById("network")
+                          ?.scrollIntoView({ block: "nearest" });
+                      }}
+                    >
+                      <span className="dispatch-symbol">
+                        <Icon
+                          name={
+                            group?.service_type === "water" ? "drop" : "bolt"
+                          }
+                        />
+                      </span>
+                      <span>
+                        <strong>{resource?.name ?? action.resource_id}</strong>
+                        <span>{asset?.name ?? action.target_asset_id}</span>
+                        <small>
+                          {group?.service_type} backup · arrives at minute{" "}
+                          {action.dispatch_minute +
+                            (route?.travel_minutes ?? 0) +
+                            (route?.setup_minutes ?? 0)}
+                        </small>
+                      </span>
+                      <Icon name="arrow" />
+                    </button>
+                  );
+                })}
+              </div>
+            </details>
+            <div className="benefit-block">
+              <span>Demonstrated benefit</span>
+              <strong>
+                {evaluation
+                  ? bestBaseline > 0 && score > bestBaseline
+                    ? `${Math.round(((score - bestBaseline) / bestBaseline) * 100)}% higher service score`
+                    : score > bestBaseline
+                      ? "More modeled service restored"
+                      : "Best result under this policy"
+                  : "Comparing outcomes…"}
+              </strong>
+              <p>Against the strongest baseline, with the same resources.</p>
+              <div className="exact-score">
+                <span>
+                  <b>{evaluation ? formatNumber(score) : "—"}</b> recommended
+                </span>
+                <span>vs</span>
+                <span>
+                  <b>{evaluation ? formatNumber(bestBaseline) : "—"}</b>{" "}
+                  baseline
+                </span>
+              </div>
+              <small>weighted service-person-minutes · not lives saved</small>
+            </div>
+            <details className="compare-details">
+              <summary>
+                Compare all responses <Icon name="branch" />
+              </summary>
+              <p>Select a response to see what changes on the map.</p>
+              {planOptions.map((option) => (
+                <button
+                  type="button"
+                  className="baseline-line"
+                  key={option.key}
+                  aria-pressed={planKey === option.key}
+                  onClick={() => {
+                    setPlanKey(option.key);
+                    setPlaying(false);
+                  }}
+                >
+                  <span>{option.label}</span>
+                  <strong>{formatNumber(option.score)}</strong>
+                  <span className="comparison-track">
+                    <span
+                      style={{
+                        width: `${(option.score / Math.max(1, ...planOptions.map((item) => item.score))) * 100}%`,
+                      }}
+                    />
+                  </span>
+                  <small>{option.description}</small>
+                </button>
+              ))}
+            </details>
+            <a className="audit-shortcut" href="#decision-audit">
+              <Icon name="shield" />
+              <span>
+                <strong>
+                  {verification?.valid && !resultsStale
+                    ? "Decision verified"
+                    : "Check this decision"}
+                </strong>
+                <small>Replay, alternatives and receipt integrity</small>
+              </span>
+              <Icon name="arrow" />
+            </a>
+            <details className="coverage-details">
+              <summary>Community coverage · full simulation</summary>
+              <p className="section-note">Viewing {PLAN_LABELS[planKey]}</p>
+              {selectedPlan?.demand_metrics.map((metric) => (
+                <div className="impact-row" key={metric.demand_id}>
+                  <span>
+                    <strong>{metric.community_id.replaceAll("-", " ")}</strong>
+                    <small>{metric.service_type}</small>
+                  </span>
+                  <strong>
+                    {(metric.coverage_parts_per_million / 10000).toFixed(1)}%
+                  </strong>
                 </div>
-                <p className="score-definition">
-                  Priority-weighted service delivered across the simulation.
-                  This score does not estimate lives saved.
-                </p>
-                <div className="dispatch-list">
-                  {recommended.interventions.length ? (
-                    recommended.interventions.map((action) => {
-                      const resource = evaluation.scenario.resources.find(
-                        (item) => item.id === action.resource_id,
-                      );
-                      const asset = evaluation.scenario.assets.find(
-                        (item) => item.id === action.target_asset_id,
-                      );
-                      const group = asset?.dependency_groups.find(
-                        (item) => item.id === action.dependency_group_id,
-                      );
-                      const route = resource?.travel_times.find(
-                        (item) => item.asset_id === action.target_asset_id,
-                      );
-                      return (
-                        <button
-                          type="button"
-                          className="dispatch-row"
-                          key={action.id}
-                          onClick={() => {
-                            setSelectedAssetId(action.target_asset_id);
-                            document
-                              .getElementById("network")
-                              ?.scrollIntoView({ block: "start" });
-                          }}
-                        >
-                          <span className="dispatch-symbol">
-                            <Icon
-                              name={
-                                group?.service_type === "water"
-                                  ? "drop"
-                                  : "bolt"
-                              }
-                            />
-                          </span>
-                          <span>
-                            <strong>
-                              {resource?.name ?? action.resource_id}
-                            </strong>
-                            <span>{asset?.name ?? action.target_asset_id}</span>
-                            <small>
-                              {group?.service_type} backup · arrives at minute{" "}
-                              {action.dispatch_minute +
-                                (route?.travel_minutes ?? 0) +
-                                (route?.setup_minutes ?? 0)}
-                            </small>
-                          </span>
-                          <Icon name="arrow" />
-                        </button>
-                      );
-                    })
-                  ) : (
-                    <p className="idle-note">
-                      Keep all teams available. No supported dispatch improves
-                      this scenario’s objective.
-                    </p>
-                  )}
-                </div>
+              ))}
+            </details>
+            <details className="method-details">
+              <summary>Why this response?</summary>
+              {evaluation && (
                 <RecommendationInsight
                   scenario={evaluation.scenario}
                   evaluation={evaluation}
                 />
-              </>
-            ) : (
-              <div className="recommendation-placeholder">
-                <h3>Finding a response within your resources</h3>
-                <p>
-                  The engine evaluates assignments, simulates service delivery
-                  and compares the results. No recommendation is shown until
-                  that work finishes.
-                </p>
-              </div>
-            )}
-            <a className="evidence-link" href="#decision-audit">
-              <Icon name="shield" />{" "}
-              {verification?.valid && !resultsStale
-                ? "Receipt verified · review the evidence"
-                : "Check the evidence behind this response"}
-              <Icon name="arrow" />
-            </a>
-          </div>
-          <div className="comparison-panel">
-            <h2>Community service outcomes</h2>
-            <p className="section-note">
-              Coverage across the full simulation for the plan you are viewing.
-            </p>
-
-            <p className="plan-description">
-              {planOptions.find((option) => option.key === planKey)
-                ?.description ??
-                "Every plan uses the same inputs, resources and simulator."}
-            </p>
-            <div className="impact-heading">
-              <h3>Service coverage</h3>
-              <span>{PLAN_LABELS[planKey]}</span>
-            </div>
-            <p className="coverage-definition">
-              Share of each demand’s service-person-minutes delivered.
-            </p>
-            <div className="impact-list">
-              {selectedPlan?.demand_metrics.map((metric) => (
-                <div
-                  className={`impact-row ${selectedAssetId && !linkedAssets.has(displayScenario?.demands.find((demand) => demand.id === metric.demand_id)?.served_by_asset_id ?? "") ? "context-dimmed" : ""}`}
-                  key={metric.demand_id}
-                >
-                  <span>
-                    <strong>{metric.community_id.replaceAll("-", " ")}</strong>
-                    <small>
-                      {metric.service_type} · {formatNumber(metric.population)}{" "}
-                      modeled people
-                    </small>
-                  </span>
-                  <strong>
-                    {(metric.coverage_parts_per_million / 10_000).toFixed(1)}%
-                  </strong>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+              )}
+              <p>
+                {evaluation?.optimization.exhaustive_search_complete
+                  ? `${evaluation.optimization.plans_evaluated} plans checked exhaustively.`
+                  : "The result is not established until the search completes."}
+              </p>
+              <p>
+                Policy weights and coverage tolerance influence the
+                recommendation. Exact search took{" "}
+                {evaluation
+                  ? (
+                      evaluation.optimization.computation_time_ns / 1_000_000
+                    ).toFixed(1)
+                  : "—"}{" "}
+                ms on the backend.
+              </p>
+            </details>
+          </section>
+        </div>
 
         <ReceiptInspector
           className={resultsStale ? "results-stale" : ""}
@@ -1290,6 +1336,13 @@ function describeChanges(
     : ["Inputs restored to the previous run. Recompute to confirm the result."];
 }
 
+function humanAssetName(name: string) {
+  return name
+    .replace(/^(Failed|Interrupted|Finite) /, "")
+    .replace("deep-sector ", "")
+    .replace(/^./, (char) => char.toUpperCase());
+}
+
 function RecommendationInsight({
   scenario,
   evaluation,
@@ -1400,12 +1453,6 @@ function RecommendationInsight({
   );
 }
 
-function formatSigned(value: number) {
-  if (value > 0) return `+${formatNumber(value)}`;
-  if (value < 0) return `−${formatNumber(Math.abs(value))}`;
-  return "0";
-}
-
 function DependencyMap({
   assets,
   step,
@@ -1416,6 +1463,7 @@ function DependencyMap({
   selectedAssetId,
   linkedAssets,
   onSelect,
+  playing,
 }: {
   assets: Asset[];
   step: TimeStep;
@@ -1426,9 +1474,10 @@ function DependencyMap({
   selectedAssetId: string;
   linkedAssets: Set<string>;
   onSelect: (id: string) => void;
+  playing: boolean;
 }) {
   const canvasRef = useRef<HTMLDivElement>(null);
-  const [canvasWidth, setCanvasWidth] = useState(780);
+  const [canvasWidth, setCanvasWidth] = useState(900);
   useLayoutEffect(() => {
     const element = canvasRef.current;
     if (!element) return;
@@ -1448,28 +1497,26 @@ function DependencyMap({
       window.removeEventListener("resize", measure);
     };
   }, []);
-
   const layout = useMemo(
     () => layoutAssets(assets, canvasWidth),
     [assets, canvasWidth],
   );
   const states = new Map(step.assets.map((state) => [state.asset_id, state]));
-  const edgeList = assets.flatMap((asset) =>
+  const demandAssets = new Set(
+    demands.map((demand) => demand.served_by_asset_id),
+  );
+  const edges = assets.flatMap((asset) =>
     asset.dependency_groups.flatMap((group) =>
       group.provider_asset_ids.map((providerId) => ({
         key: `${providerId}-${group.id}`,
         providerId,
         targetId: asset.id,
-        groupId: group.id,
         service: group.service_type,
       })),
     ),
   );
-  const demandAssets = new Set(
-    demands.map((demand) => demand.served_by_asset_id),
-  );
-  const activeInterventionIds = new Set(step.active_intervention_ids);
-
+  const glyphX =
+    layout.orientation === "vertical" ? -layout.nodeWidth / 2 + 40 : 0;
   return (
     <div
       ref={canvasRef}
@@ -1486,53 +1533,65 @@ function DependencyMap({
         <defs>
           <marker
             id="arrow-tip"
-            markerWidth="8"
-            markerHeight="8"
-            refX="7"
-            refY="4"
+            markerWidth="6"
+            markerHeight="6"
+            refX="5"
+            refY="3"
             orient="auto"
           >
-            <path d="M0,0 L8,4 L0,8 z" />
+            <path d="M0,0 L6,3 L0,6 z" />
           </marker>
         </defs>
         <g className="edge-layer">
-          {edgeList.map((edge, edgeIndex) => {
-            const from = layout.positions.get(edge.providerId);
-            const to = layout.positions.get(edge.targetId);
-            const providerState = states.get(edge.providerId);
+          {edges.map((edge, index) => {
+            const from = layout.positions.get(edge.providerId),
+              to = layout.positions.get(edge.targetId);
             if (!from || !to) return null;
-            const edgeState = !providerState
+            const state = states.get(edge.providerId);
+            const status = !state
               ? "pending"
-              : providerState.physical_fault_active
+              : state.physical_fault_active
                 ? "faulted"
-                : !providerState?.service_available
+                : !state.service_available
                   ? "failed"
-                  : providerState.unsatisfied_dependency_group_ids.length
+                  : state.unsatisfied_dependency_group_ids.length
                     ? "buffered"
                     : "active";
             let path: string;
-            if (layout.orientation === "horizontal") {
-              const x1 = from.x + layout.nodeWidth / 2;
-              const x2 = to.x - layout.nodeWidth / 2;
-              const curve = Math.max(18, (x2 - x1) * 0.42);
-              path = `M ${x1} ${from.y} C ${x1 + curve} ${from.y}, ${x2 - curve} ${to.y}, ${x2} ${to.y}`;
+            if (layout.orientation === "vertical") {
+              const x = from.x + glyphX;
+              const lane = 14 + (index % 3) * 8;
+              path = `M ${x - 25} ${from.y} C ${lane} ${from.y}, ${lane} ${to.y}, ${x - 25} ${to.y}`;
             } else {
-              const x1 = from.x + layout.nodeWidth / 2;
-              const x2 = to.x + layout.nodeWidth / 2;
-              const lane = layout.width - 8 - (edgeIndex % 4) * 8;
-              path = `M ${x1} ${from.y} C ${lane} ${from.y + 22}, ${lane} ${to.y - 22}, ${lane} ${to.y} L ${x2} ${to.y}`;
+              const x1 = from.x + 34,
+                x2 = to.x - 34;
+              if (to.level - from.level > 1) {
+                const lane = 20 + index * 6;
+                path = `M ${from.x} ${from.y - 34} C ${from.x} ${lane}, ${to.x} ${lane}, ${to.x} ${to.y - 34}`;
+              } else {
+                const curve = Math.max(30, (x2 - x1) * 0.5);
+                path = `M ${x1} ${from.y} C ${x1 + curve} ${from.y}, ${x2 - curve} ${to.y}, ${x2} ${to.y}`;
+              }
             }
+            const linked =
+              selectedAssetId &&
+              linkedAssets.has(edge.providerId) &&
+              linkedAssets.has(edge.targetId);
             return (
               <g
                 key={edge.key}
-                className={`edge-group edge-${edgeState} ${selectedAssetId && !(linkedAssets.has(edge.providerId) && linkedAssets.has(edge.targetId)) ? "context-dimmed" : selectedAssetId ? "edge-linked" : ""}`}
+                className={`edge-group edge-${status} ${selectedAssetId && !linked ? "context-dimmed" : ""} ${linked ? "edge-linked" : ""}`}
               >
                 <title>{`${edge.service}: ${edge.providerId} to ${edge.targetId}`}</title>
                 <path d={path} markerEnd="url(#arrow-tip)" />
-                {layout.orientation === "horizontal" && (
-                  <text x={(from.x + to.x) / 2} y={(from.y + to.y) / 2 - 7}>
-                    {edge.service}
-                  </text>
+                {playing && (status === "active" || status === "buffered") && (
+                  <circle className="service-tracer" r="3">
+                    <animateMotion
+                      dur="1.8s"
+                      repeatCount="indefinite"
+                      path={path}
+                    />
+                  </circle>
                 )}
               </g>
             );
@@ -1541,69 +1600,57 @@ function DependencyMap({
         <g className="node-layer">
           {assets.map((asset) => {
             const position = layout.positions.get(asset.id);
-            const state = states.get(asset.id);
             if (!position) return null;
-            const backupServices =
-              selectedPlan?.interventions
-                .filter(
-                  (action) =>
-                    action.target_asset_id === asset.id &&
-                    activeInterventionIds.has(action.id),
-                )
-                .map(
-                  (action) =>
-                    asset.dependency_groups.find(
-                      (group) => group.id === action.dependency_group_id,
-                    )?.service_type,
-                )
-                .filter((service): service is string => Boolean(service))
-                .filter(
-                  (service, index, all) => all.indexOf(service) === index,
-                ) ?? [];
+            const state = states.get(asset.id);
+            const backup = selectedPlan?.interventions.some(
+              (action) =>
+                action.target_asset_id === asset.id &&
+                step.active_intervention_ids.includes(action.id),
+            );
             const status = !state
               ? "pending"
               : state.physical_fault_active
                 ? "faulted"
                 : !state.service_available
                   ? "offline"
-                  : backupServices.length
+                  : backup
                     ? "backup"
                     : state.unsatisfied_dependency_group_ids.length
                       ? "buffered"
                       : "online";
-            const statusLabel = !state
-              ? "Awaiting simulation"
-              : status === "faulted"
-                ? "physical fault"
-                : status === "offline"
-                  ? "service unavailable"
-                  : status === "backup"
-                    ? `on backup · ${backupServices.join(" + ")}`
-                    : status === "buffered"
-                      ? `on reserve · ${state.buffer_units} ${asset.buffer.unit}`
-                      : "service working";
-            const inputs = [
-              ...new Set(
-                asset.dependency_groups.map((group) => group.service_type),
-              ),
-            ];
-            const nameLines = wrapAssetName(
-              asset.name,
-              Math.max(15, Math.floor((layout.nodeWidth - 24) / 7.2)),
+            const statusLabel = {
+              pending: "Awaiting simulation",
+              faulted: "Physical failure",
+              offline: "Service unavailable",
+              backup: "Backup active",
+              buffered: "On reserve",
+              online: "Service available",
+            }[status];
+            const mobile = layout.orientation === "vertical";
+            const name = humanAssetName(asset.name);
+            const lines = wrapAssetName(
+              name,
+              mobile
+                ? Math.max(14, Math.floor((layout.width - 128) / 8))
+                : Math.max(19, Math.floor(layout.nodeWidth / 7.5)),
             );
-            const nameTop = -8 - (nameLines.length - 1) * 7;
-            const roleClass =
-              asset.kind === "source"
-                ? "node-source"
-                : demandAssets.has(asset.id)
-                  ? "node-demand"
-                  : "node-hub";
-
+            const icon =
+              asset.buffer.capacity_units > 0 && asset.provides === "power"
+                ? "battery"
+                : asset.provides === "water"
+                  ? "drop"
+                  : asset.provides === "power"
+                    ? "bolt"
+                    : asset.provides === "medical"
+                      ? "medical"
+                      : asset.provides === "air"
+                        ? "air"
+                        : "branch";
             return (
               <g
                 key={asset.id}
-                transform={`translate(${position.x}, ${position.y})`}
-                className={`asset-node node-${status} ${roleClass} ${selectedAssetId === asset.id ? "node-selected" : ""} ${selectedAssetId && !linkedAssets.has(asset.id) ? "context-dimmed" : ""}`}
+                transform={`translate(${position.x},${position.y})`}
+                className={`asset-node node-${status} ${demandAssets.has(asset.id) ? "node-demand" : ""} ${selectedAssetId === asset.id ? "node-selected" : ""} ${selectedAssetId && !linkedAssets.has(asset.id) ? "context-dimmed" : ""}`}
                 role="button"
                 tabIndex={0}
                 aria-label={`${asset.name}: ${statusLabel}`}
@@ -1616,82 +1663,54 @@ function DependencyMap({
                   }
                 }}
               >
-                {demandAssets.has(asset.id) && (
-                  <rect
-                    className="demand-outer-ring"
-                    x={-layout.nodeWidth / 2 - 3}
-                    y={-layout.nodeHeight / 2 - 3}
-                    width={layout.nodeWidth + 6}
-                    height={layout.nodeHeight + 6}
-                    rx="12"
+                <g className="node-marker" transform={`translate(${glyphX},0)`}>
+                  <circle className="node-halo" r="42" />
+                  <circle className="node-disc" r="31" />
+                  <circle
+                    className="state-ripple"
+                    key={`${status}-${planLabel}`}
+                    r="34"
                   />
-                )}
-                <rect
-                  x={-layout.nodeWidth / 2}
-                  y={-layout.nodeHeight / 2}
-                  width={layout.nodeWidth}
-                  height={layout.nodeHeight}
-                  rx="9"
-                />
-                <circle
-                  className="node-indicator"
-                  cx={-layout.nodeWidth / 2 + 13}
-                  cy={-layout.nodeHeight / 2 + 14}
-                  r="4"
-                />
-                <text
-                  className="node-kind"
-                  x={-layout.nodeWidth / 2 + 23}
-                  y={-layout.nodeHeight / 2 + 18}
-                >
-                  {asset.kind === "source"
-                    ? "Source"
-                    : demandAssets.has(asset.id)
-                      ? "Community service"
-                      : "Infrastructure"}
-                </text>
+                  <g transform="translate(-12,-12)" className="node-symbol">
+                    <Icon name={icon} />
+                  </g>
+                  <g transform="translate(23,23)" className="node-status-badge">
+                    <circle r="10" />
+                    <text y="4" textAnchor="middle">
+                      {status === "faulted" || status === "offline"
+                        ? "!"
+                        : status === "pending"
+                          ? "…"
+                          : status === "buffered"
+                            ? "~"
+                            : "✓"}
+                    </text>
+                  </g>
+                </g>
                 <text
                   className="node-name"
-                  x="0"
-                  y={nameTop}
-                  textAnchor="middle"
+                  x={mobile ? glyphX + 60 : 0}
+                  y={mobile ? -15 : 56}
+                  textAnchor={mobile ? "start" : "middle"}
                 >
-                  {nameLines.map((line, index) => (
+                  {lines.map((line, index) => (
                     <tspan
-                      key={`${asset.id}-name-${index}`}
-                      x="0"
-                      dy={index ? 14 : 0}
+                      key={index}
+                      x={mobile ? glyphX + 60 : 0}
+                      dy={index ? 19 : 0}
                     >
                       {line}
                     </tspan>
                   ))}
                 </text>
-                {inputs.length > 0 && (
-                  <text
-                    className="node-inputs"
-                    x="0"
-                    y={layout.nodeHeight / 2 - 23}
-                    textAnchor="middle"
-                  >
-                    Needs {inputs.join(" + ")}
-                  </text>
-                )}
                 <text
                   className="node-status"
-                  x="0"
-                  y={layout.nodeHeight / 2 - 8}
-                  textAnchor="middle"
+                  x={mobile ? glyphX + 60 : 0}
+                  y={mobile ? lines.length * 19 + 1 : lines.length * 19 + 65}
+                  textAnchor={mobile ? "start" : "middle"}
                 >
                   {statusLabel}
                 </text>
-                {demandAssets.has(asset.id) && (
-                  <circle
-                    className="demand-ring"
-                    cx={layout.nodeWidth / 2 - 13}
-                    cy={-layout.nodeHeight / 2 + 14}
-                    r="5"
-                  />
-                )}
               </g>
             );
           })}
@@ -1708,16 +1727,14 @@ export function layoutAssets(assets: Asset[], width: number) {
     const cached = levels.get(asset.id);
     if (cached !== undefined) return cached;
     if (visiting.has(asset.id)) return 0;
-    const nextVisiting = new Set(visiting).add(asset.id);
+    const next = new Set(visiting).add(asset.id);
     const providers = asset.dependency_groups.flatMap((group) =>
       group.provider_asset_ids
         .map((id) => byId.get(id))
         .filter((item): item is Asset => Boolean(item)),
     );
     const level = providers.length
-      ? Math.max(
-          ...providers.map((provider) => levelOf(provider, nextVisiting)),
-        ) + 1
+      ? Math.max(...providers.map((provider) => levelOf(provider, next))) + 1
       : 0;
     levels.set(asset.id, level);
     return level;
@@ -1729,63 +1746,65 @@ export function layoutAssets(assets: Asset[], width: number) {
     byLevel.set(level, [...(byLevel.get(level) ?? []), asset]);
   }
   const maxLevel = Math.max(0, ...levels.values());
-  const nodeHeight = 120;
   const positions = new Map<
     string,
     { x: number; y: number; level: number; row: number }
   >();
-  if (width >= Math.max(700, (maxLevel + 1) * 170 + maxLevel * 32 + 28)) {
+  if (width >= Math.max(700, (maxLevel + 1) * 190 + maxLevel * 24 + 28)) {
     const nodeWidth = Math.min(
-      210,
-      (width - 28 - maxLevel * 32) / (maxLevel + 1),
+      220,
+      (width - 28 - maxLevel * 24) / (maxLevel + 1),
     );
-    const margin = 14;
-    const levelCount = maxLevel + 1;
-    const columnStep =
-      levelCount > 1 ? (width - margin * 2 - nodeWidth) / maxLevel : 0;
     let maxRows = 1;
     for (const [level, items] of byLevel) {
       maxRows = Math.max(maxRows, items.length);
       items.forEach((asset, row) => {
-        positions.set(asset.id, {
-          x:
-            levelCount > 1
-              ? margin + nodeWidth / 2 + level * columnStep
-              : width / 2,
-          y: 68 + row * 152,
-          level,
-          row,
-        });
+        let y = 110 + row * 220;
+        let x = maxLevel
+          ? nodeWidth / 2 + 14 + (level * (width - nodeWidth - 28)) / maxLevel
+          : width / 2;
+        if (
+          maxLevel === 2 &&
+          level === 1 &&
+          items.length === 2 &&
+          items.filter((item) => item.dependency_groups.length > 1).length === 1
+        ) {
+          const complex = asset.dependency_groups.length > 1;
+          y = complex ? 210 : 70;
+          x += complex ? -24 : 45;
+        }
+        if (maxLevel === 2 && level === 2 && items.length === 2)
+          y = 130 + row * 220;
+        positions.set(asset.id, { x, y, level, row });
       });
     }
     return {
       orientation: "horizontal" as const,
       width,
-      height: 24 + maxRows * 152,
+      height: Math.max(460, 240 + (maxRows - 1) * 220),
       nodeWidth,
-      nodeHeight,
+      nodeHeight: 140,
       positions,
     };
   }
-
-  const nodeWidth = Math.max(160, width - 72);
-  const orderedAssets = [...assets].sort(
-    (left, right) => (levels.get(left.id) ?? 0) - (levels.get(right.id) ?? 0),
+  const nodeWidth = Math.max(160, width - 32);
+  const ordered = [...assets].sort(
+    (a, b) => (levels.get(a.id) ?? 0) - (levels.get(b.id) ?? 0),
   );
-  orderedAssets.forEach((asset, row) => {
+  ordered.forEach((asset, row) =>
     positions.set(asset.id, {
       x: width / 2,
-      y: 60 + row * 138,
+      y: 70 + row * 144,
       level: levels.get(asset.id) ?? 0,
       row,
-    });
-  });
+    }),
+  );
   return {
     orientation: "vertical" as const,
     width,
-    height: 60 + orderedAssets.length * 138,
+    height: ordered.length * 144 + 20,
     nodeWidth,
-    nodeHeight,
+    nodeHeight: 140,
     positions,
   };
 }
@@ -1969,6 +1988,19 @@ function Icon({ name }: { name: string }) {
     "aria-hidden": true as const,
   };
   switch (name) {
+    case "battery":
+      return (
+        <svg {...common}>
+          <rect x="3" y="6" width="16" height="12" rx="3" />
+          <path d="M21 10v4M7 10v4M11 10v4" />
+        </svg>
+      );
+    case "medical":
+      return (
+        <svg {...common}>
+          <path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z" />
+        </svg>
+      );
     case "bolt":
       return (
         <svg {...common}>

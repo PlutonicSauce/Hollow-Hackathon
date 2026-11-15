@@ -35,7 +35,7 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for Render authorization and HTTPS verifica
 
 ## Interface
 
-The current interface centers the live infrastructure map: select a plan, replay service changes, inspect connected assets and communities, then audit the Decision Receipt. Response edits remain drafts until reviewed and confirmed. See [DESIGN_REVIEW.md](./DESIGN_REVIEW.md) for the design decisions and resource evaluation.
+The current light-first interface pairs a spacious infrastructure map with one recommended response: select a plan, replay service changes, inspect connected assets and communities, then audit the Decision Receipt. Response edits remain drafts until reviewed and confirmed. See [DESIGN_REVIEW.md](./DESIGN_REVIEW.md) for the design decisions and resource evaluation.
 
 ## Demo flow
 
