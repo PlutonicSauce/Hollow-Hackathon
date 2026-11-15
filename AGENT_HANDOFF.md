@@ -1,6 +1,6 @@
 # LIFELINE agent handoff
 
-## Current milestone
+## Existing local application
 
 Milestone 4 adds a local interactive React/TypeScript application and a standard-library Python API around the existing engine. The API returns real simulation traces, exact optimization/baseline results, Decision Receipts, and verifier reports. Read `README.md`, `ARCHITECTURE.md`, `DATA_CONTRACTS.md`, and `TESTING.md` before changing semantics.
 
@@ -62,6 +62,12 @@ Milestone 5 implements the approved creative direction reset to **The Field Doss
 - **Decision Receipt:** Clean digest row with one-click verification returning 7 explicit check statuses, collapsible payload inspection, and expandable model assumptions/limitations.
 - **Verification:** All 60 Python backend tests pass. All 8 frontend Vitest tests pass. TypeScript builds without errors.
 
+## Milestone 6: public serving boundary
+
+Public serving uses `scripts/build.sh`, `scripts/start.sh`, `render.yaml`, and `engine.public_app` under Gunicorn. The loopback-only `engine.api` remains available for development. The Field Dossier UI and versioned simulation/optimization/receipt semantics are preserved. Public admission is defined in `engine.public_limits`; evaluation and verification run in OS-limited subprocesses with a kill/reap deadline. Read `SECURITY.md`, `API_GUIDE.md`, and `DEPLOYMENT.md` before changing hosting limits or worker counts.
+
+CI now checks production HTTP integration and Linux memory limits in addition to the engine/UI tests. A configured Blueprint and passing local checks do not establish a public deployment: account authorization and live HTTPS/browser verification are required. Never claim an untested URL is live.
+
 ## Next milestone boundary
 
-Milestone 4/5 is limited to the current local vertical slice. Do not add authentication, external data, cloud deployment, operational claims, or unrelated product areas without approval. The prior `3091d96` historical Copilot co-author trailer is not to be rewritten; future commits must have only the configured user's author/committer identity and no attribution footer.
+Milestone 6 permits the single free Render public demo, its security limits, and deployment validation. Do not add authentication, external data, paid infrastructure, operational claims, or unrelated product areas without approval. The prior `3091d96` historical Copilot co-author trailer is not to be rewritten; future commits must have only the configured user's author/committer identity and no attribution footer.

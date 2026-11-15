@@ -8,10 +8,11 @@ From `backend/`:
 python -m unittest discover -s tests -v
 ```
 
-The suite uses Python's standard `unittest` runner; the runtime dependency is Pydantic v2. In this workspace, run the project virtual environment with:
+The suite uses Python's standard `unittest` runner. Install the pinned production requirements (Pydantic v2 and Gunicorn) for the complete Milestone 6 checks. In this workspace, run:
 
 ```sh
 cd backend
+.venv/bin/python -m pip install -r requirements-production.txt
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
@@ -41,7 +42,7 @@ cd backend
 
 ## GitHub Actions
 
-`.github/workflows/tests.yml` installs the backend package with `python -m pip install -e .`, then runs the backend suite on Python 3.11, 3.12, and 3.13. Its frontend job runs `npm ci`, `npm test`, and `npm run build` on Node 22. It uses no secrets or paid services.
+`.github/workflows/tests.yml` installs the pinned production requirements and backend package, then runs the backend suite on Python 3.11, 3.12, and 3.13. Its frontend job runs `npm ci`, `npm test`, and `npm run build` on Node 22, then starts the real Gunicorn server through `scripts/smoke.py`. It uses no secrets or paid services.
 
 ## Milestone 4 application tests
 
@@ -56,6 +57,14 @@ npm run build
 ```
 
 `backend/tests/test_api.py` exercises the real loopback HTTP handlers: catalog/scenario loading, the coupled 1,100-versus-720 outputs, generated receipt verification, route/resource counterfactual changes, malformed/invalid inputs, and candidate-bound errors. `frontend/src/App.test.tsx` covers stale results and receipt gating after edits, recomputation and backend errors, plan switching, bounded-search labeling, valid/invalid verification states, keyboard focus order, and graph bounds at mobile and desktop widths. Browser validation additionally loads the running app against the real API; frontend test mocks are not treated as integration evidence.
+
+## Milestone 6 public boundary
+
+`backend/tests/test_public.py` adds admission checks for evaluation **and receipts**, graph/collection/horizon/integer/JSON limits, policy escalation resistance, combined work, unchanged receipt digest, verifier independence, framing/content types, redacted errors, filesystem denial, shared busy/rate responses, and health during load. Real subprocess tests prove wall-deadline kill/reaping and OS CPU termination. The Linux-only allocation test proves the 256 MiB address-space cap; it is skipped locally on macOS and runs in all three Linux CI backend jobs.
+
+After building the frontend, run `backend/.venv/bin/python scripts/smoke.py` from the repository root. It starts and stops Gunicorn on an ephemeral dynamic port, checks built HTML/JS/CSS and API together, evaluates 1,100 versus 720/720 across eight candidates, verifies all seven receipt checks and the original digest, and checks actual HTTP admission/security behavior. It also proves slow uploads are interrupted, concurrent compute is rejected while health responds, and the shared rate budget is enforced. Its single measured round trip is diagnostic, not a performance guarantee.
+
+Remote mode accepts the actual HTTPS origin as an argument, verifies TLS normally, and skips slow-upload/rate-saturation checks. A browser check against that public URL is also required before claiming deployment success. No automated browser E2E framework was added; the existing React tests and HTTP smoke checks are supplemented by browser validation.
 
 ## Expected test discipline
 

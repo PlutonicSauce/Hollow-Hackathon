@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: lifeline-patriot-hackfest
+    runtime: python
+    plan: free
+    region: virginia
+    repo: https://github.com/PlutonicSauce/Hollow-Hackathon
+    branch: main
+    buildCommand: bash scripts/build.sh
+    startCommand: bash scripts/start.sh
+    healthCheckPath: /api/health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.18
+      - key: NODE_VERSION
+        value: 22.23.5
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: PYTHONDONTWRITEBYTECODE
+        value: "1"

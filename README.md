@@ -27,6 +27,12 @@ cd backend
 
 After `npm run build` in `frontend/`, the API also serves the production frontend at `http://127.0.0.1:8000`. This is a loopback-only local demo, not a public deployment configuration.
 
+## Public hosting (Milestone 6)
+
+The Render Blueprint in `render.yaml` builds the existing frontend and serves it with the Python API from one Gunicorn service. Public evaluation and receipt verification use bounded, killable subprocesses; the model and Field Dossier interface are unchanged. Build with `bash scripts/build.sh` and start with `bash scripts/start.sh` in the intended Python environment. The production entry point binds `0.0.0.0:$PORT`; normal `npm run dev` remains loopback-only.
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for Render authorization and HTTPS verification, [SECURITY.md](./SECURITY.md) for exact limits, and [API_GUIDE.md](./API_GUIDE.md) for requests and errors. A public URL is not considered deployed until tested.
+
 ## Demo flow
 
 1. Select the coupled utility incident and inspect its fault propagation on the dependency map.
@@ -41,11 +47,15 @@ The model is deliberately abstract: binary service, AND dependency groups, OR pr
 
 ```sh
 cd ~/Projects/LIFELINE/backend
+.venv/bin/python -m pip install -r requirements-production.txt
 .venv/bin/python -m unittest discover -s tests -v
 
 cd ~/Projects/LIFELINE/frontend
 npm test
 npm run build
+
+cd ..
+backend/.venv/bin/python scripts/smoke.py
 ```
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md), [DATA_CONTRACTS.md](./DATA_CONTRACTS.md), and [TESTING.md](./TESTING.md) for model and verification details.

@@ -24,7 +24,7 @@ jobs:
           cache: pip
           cache-dependency-path: backend/pyproject.toml
       - name: Install package
-        run: python -m pip install -e .
+        run: python -m pip install -r requirements-production.txt -e .
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
 
@@ -46,3 +46,10 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: npm run build
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install production backend
+        run: python -m pip install -r backend/requirements-production.txt -e ./backend
+      - name: Check production HTTP integration and limits
+        run: python scripts/smoke.py

@@ -170,3 +170,9 @@ The dependency map derives its nodes, provider edges, and selected-time service 
 The dev launcher starts the API and Vite together, with npm/pip caches, Python bytecode, logs, and temporary files rooted under the checkout's ignored `.lifeline/` directory. Paths are resolved relative to the launcher, and a missing `backend/.venv` produces setup guidance. No external drive is required. VS Code's user-data and Copilot session storage are separate application-level paths and are not redirected by this project launcher.
 
 The first slice is a local synthetic-scenario demo, not an operational service. It has no authentication, persistence of edited scenarios, physical capacity model, live data, cloud deployment, or real-world calibration.
+
+## Milestone 6 public serving
+
+`engine.public_app` is a WSGI boundary served by a single threaded Gunicorn worker. It serves only explicit API routes and built frontend assets on one origin. Public computations are admitted one at a time, rate-limited globally, and executed in disposable subprocesses with CPU, Linux memory, and kill/reap wall-clock limits. Both evaluation scenarios and replay inputs inside receipts undergo the same public size, graph, candidate-space, and combined-work admission checks before engine execution. These are hosting restrictions, not changes to versioned simulation or verification semantics; declared receipt policy and hashed payloads remain intact.
+
+The Render Free Blueprint builds both layers and supplies dynamic port binding behind HTTPS ingress. No persistence, authentication, separate frontend host, or new model capability is added. See `SECURITY.md` for exact limits, `API_GUIDE.md` for HTTP contracts, and `DEPLOYMENT.md` for authorization and live verification. The development launcher remains loopback-only.
