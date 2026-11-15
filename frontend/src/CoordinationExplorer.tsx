@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { CoordinationCertificate, Evaluation } from "./types";
+import { WorkspaceIcon } from "./WorkspaceIcon";
 import { CoordinationNetwork } from "./CoordinationNetwork";
 import "./coordination.css";
 
@@ -117,7 +118,7 @@ export function CoordinationExplorer({ evaluation, certificate, stale }: {
           <CoordinationNetwork scenario={scenario} availability={shownRow?.availability} minute={minute} selectedActions={selectedActions}
             actions={comparison === "subsets" ? evaluation.optimization.selected_plan.interventions : baseline?.plan.interventions ?? []} />
           <div className="coord-replay">
-            <button type="button" disabled={stale || !checked || !shownRow} onClick={() => {if (minute >= scenario.horizon_minutes) setMinute(0); setPlaying(!playing);}}>{playing ? "Pause recovery" : "Watch recovery"}</button>
+            <button type="button" disabled={stale || !checked || !shownRow} onClick={() => {if (minute >= scenario.horizon_minutes) setMinute(0); setPlaying(!playing);}}><WorkspaceIcon name={playing ? "pause" : "play"} />{playing ? "Pause recovery" : "Watch recovery"}</button>
             <label>Minute {minute} of {scenario.horizon_minutes}<input type="range" min="0" max={scenario.horizon_minutes} value={minute} disabled={stale || !checked} aria-label="Counterfactual minute" onChange={(event) => {setMinute(Number(event.target.value)); setPlaying(false);}} /></label>
             <button type="button" disabled={stale || !checked} onClick={() => {setMinute(0);setPlaying(false);}}>Reset</button>
           </div>

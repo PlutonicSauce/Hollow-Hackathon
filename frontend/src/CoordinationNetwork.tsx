@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { WorkspaceIcon } from "./WorkspaceIcon";
 import type { Plan, Scenario } from "./types";
 
 /** Layout only: all service states are read from a recorded Python replay. */
@@ -47,7 +48,7 @@ export function CoordinationNetwork({ scenario, availability, minute, selectedAc
           const backed = actions.filter((action) => selectedActions.includes(action.id) && action.target_asset_id === item.id);
           return <button type="button" key={item.id} aria-pressed={inspected === item.id} onClick={() => setInspected(inspected === item.id ? "" : item.id)}
             className={`discovery-asset ${state ? "asset-on" : "asset-off"} ${fault ? "asset-failed" : ""} ${inspected && !related.has(item.id) ? "flow-dimmed" : ""}`}>
-            <span className="asset-state-symbol" aria-hidden="true">{fault ? "×" : state ? "✓" : "—"}</span>
+            <span className="asset-state-symbol" aria-hidden="true"><WorkspaceIcon name={fault ? "failed" : state ? "available" : "unavailable"} /></span>
             <strong>{item.name.replace(/^(Failed |Interrupted |Finite )/, "").replace("deep-sector ", "").replace(/^./, (char) => char.toUpperCase())}</strong><small>{status}</small>
             {backed.length > 0 && <span className="asset-backup">{backed.length} backup {backed.length === 1 ? "input" : "inputs"} assigned</span>}
           </button>;
