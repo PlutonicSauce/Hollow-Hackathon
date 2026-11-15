@@ -69,3 +69,7 @@ Remote mode accepts the actual HTTPS origin as an argument, verifies TLS normall
 ## Expected test discipline
 
 Tests assert externally meaningful states and metrics, not private helper details. Any change to event ordering, reserve boundary behavior, optimization semantics, canonical serialization, or metric units must update the architecture/data-contract documentation and hand-calculated expectations. The verifier intentionally shares the production simulator; manual expected traces and score tables help catch errors common to both optimizer and verifier. A passing synthetic suite is evidence of contract conformance, not physical validity or operational readiness.
+
+## Launch redesign frontend checks
+
+The current frontend suite has 15 tests covering draft confirmation/cancellation, baseline and per-minute status changes, linked keyboard asset selection, evaluated-route consistency during pending recomputation, receipt success/failure/gating, replay completion, predictable focus, and graph bounds. Modal focus trapping and responsive layout receive real-browser checks because jsdom does not implement native modal behavior or CSS layout. `scripts/smoke.py` continues to validate the unchanged production backend and its known scores/digest. See `DESIGN_REVIEW.md` for the actual design and remaining UX limits.

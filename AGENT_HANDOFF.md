@@ -71,3 +71,7 @@ CI now checks production HTTP integration and Linux memory limits in addition to
 ## Next milestone boundary
 
 Milestone 6 permits the single free Render public demo, its security limits, and deployment validation. Do not add authentication, external data, paid infrastructure, operational claims, or unrelated product areas without approval. The prior `3091d96` historical Copilot co-author trailer is not to be rewritten; future commits must have only the configured user's author/committer identity and no attribution footer.
+
+## Launch frontend redesign
+
+The current UI uses a map-first graphite workspace, visible plan radio choices, linked asset inspection and community/timeline status, then response details and Decision Receipt audit. Draft edits require native modal confirmation and do not alter the displayed evaluated run. Preserve the distinction between per-minute availability and whole-horizon coverage. `DESIGN_REVIEW.md` records the design resources, interaction invariants, validation and limitations. Backend semantics and deployment limits are unchanged.

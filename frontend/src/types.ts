@@ -117,6 +117,7 @@ export type Baseline = {
 };
 
 export type OptimizationResult = {
+  policy: OptimizationPolicy;
   candidate_plans: number;
   feasible_plans: number;
   plans_evaluated: number;

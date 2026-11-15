@@ -1,3 +1,5 @@
+> Historical Milestone 5 direction. The current launch redesign and resource evaluation are documented in [DESIGN_REVIEW.md](./DESIGN_REVIEW.md).
+
 # LIFELINE — Design Direction
 
 **Document status:** Implementation-ready creative direction.

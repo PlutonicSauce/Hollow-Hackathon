@@ -33,6 +33,10 @@ The Render Blueprint in `render.yaml` builds the existing frontend and serves it
 
 See [DEPLOYMENT.md](./DEPLOYMENT.md) for Render authorization and HTTPS verification, [SECURITY.md](./SECURITY.md) for exact limits, and [API_GUIDE.md](./API_GUIDE.md) for requests and errors. A public URL is not considered deployed until tested.
 
+## Interface
+
+The current interface centers the live infrastructure map: select a plan, replay service changes, inspect connected assets and communities, then audit the Decision Receipt. Response edits remain drafts until reviewed and confirmed. See [DESIGN_REVIEW.md](./DESIGN_REVIEW.md) for the design decisions and resource evaluation.
+
 ## Demo flow
 
 1. Select the coupled utility incident and inspect its fault propagation on the dependency map.
