@@ -499,9 +499,11 @@ function App() {
               className="secondary-button"
               disabled={loading}
               onClick={() =>
-                scenario
-                  ? void runEvaluation(scenario, tolerancePpm)
-                  : window.location.reload()
+                resultsStale
+                  ? recalculate()
+                  : scenario
+                    ? void runEvaluation(scenario, tolerancePpm)
+                    : window.location.reload()
               }
             >
               Retry evaluation

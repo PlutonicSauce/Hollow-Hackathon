@@ -452,6 +452,9 @@ describe("LIFELINE incident experience", () => {
     expect(
       screen.getByRole("button", { name: "Verify this decision" }),
     ).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Retry evaluation" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("Review response changes");
+    expect(api.evaluate).toHaveBeenCalledTimes(2);
   });
 
   it("keeps keyboard focus in a predictable order across primary controls", async () => {
