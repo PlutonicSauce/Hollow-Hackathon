@@ -122,7 +122,7 @@ export function CoordinationExplorer({ evaluation, certificate, stale }: {
             <button type="button" disabled={stale || !checked} onClick={() => {setMinute(0);setPlaying(false);}}>Reset</button>
           </div>
           <p className="coord-observed">{scenario.demands.filter((demand) => shownRow?.availability.find((item) => item.asset_id === demand.served_by_asset_id)?.service_available[minute] === true).length} of {scenario.demands.length} community services available at minute {minute}</p>
-          <p className="coord-phase">{minute === 0 ? "Before response · Initial recorded state" : minute === scenario.horizon_minutes ? "End boundary · Not an additional service minute" : selectedActions.length ? "Response underway · Recorded simulator state" : "Without response · Recorded simulator state"}</p>
+          <p className="coord-phase">{minute === 0 ? "Initial state · Includes any backup arriving at minute 0" : minute === scenario.horizon_minutes ? "End boundary · Not an additional service minute" : selectedActions.length ? "Response underway · Recorded simulator state" : "Without response · Recorded simulator state"}</p>
           <div className="coord-results">
 
           <div role="status" aria-live="polite" aria-atomic="true" className="coord-score">

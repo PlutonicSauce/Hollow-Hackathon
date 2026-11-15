@@ -19,6 +19,7 @@ describe("coordination counterfactuals", () => {
     const user = userEvent.setup();
     render(view());
     expect(score()).toHaveTextContent("1,100");
+    expect(screen.getByText("Initial state · Includes any backup arriving at minute 0")).toBeInTheDocument();
     expect(screen.getAllByRole("img", {name: /5 of 6 minutes available/})).toHaveLength(2);
     await user.click(screen.getByRole("switch", {name: "Water tanker crew intervention"}));
     expect(score()).toHaveTextContent("Mobile generator crew only · same score as no actions");
