@@ -381,6 +381,10 @@ function App() {
         .map((metric) => metric.service_type) ?? [],
     ),
   ];
+  const availableServices = displayScenario?.demands.filter((demand) => currentStep?.assets.find((asset) => asset.asset_id === demand.served_by_asset_id)?.service_available).length ?? 0;
+  const atEndBoundary = Boolean(evaluation && minute === displayScenario?.horizon_minutes);
+  const backupEnded = atEndBoundary && Boolean(trace[minute - 1]?.active_intervention_ids.length && !currentStep?.active_intervention_ids.length);
+  const replayPhase = !evaluation ? "Preparing simulation" : minute === 0 ? "Initial state · Minute 0" : minute >= (displayScenario?.horizon_minutes ?? 0) ? "End of modeled window" : planKey === "no_intervention" ? "Without a response" : "Response underway";
   const incidentTitle = disruptedServices.length
     ? `${disruptedServices.join(" and ").replace(/^./, (char) => char.toUpperCase())} services face disruption.`
     : "Essential services need a response.";
@@ -512,23 +516,284 @@ function App() {
 
         <div className="experience-grid">
           <section
+            id="response"
+            className={`response-sheet ${resultsStale ? "results-stale" : ""}`}
+            aria-label="Recommended response and comparison"
+            aria-busy={loading}
+          >
+            {evaluation &&
+              !evaluation.optimization.exhaustive_search_complete && (
+                <p className="search-state">Search incomplete</p>
+              )}
+            <div className="response-summary">
+              <div className="response-eyebrow">
+                <span className="response-check">
+                  <Icon name="check" />
+                </span>{" "}
+                Recommended response
+              </div>
+              <h2>
+                {recommended?.interventions.length
+                  ? new Set(
+                      recommended.interventions.map(
+                        (action) => action.target_asset_id,
+                      ),
+                    ).size === 1
+                    ? `Support the ${humanAssetName(displayScenario?.assets.find((asset) => asset.id === recommended.interventions[0].target_asset_id)?.name ?? "shared infrastructure").toLowerCase()}`
+                    : "Coordinate the available teams"
+                  : evaluation
+                    ? "Keep your teams available"
+                    : "Finding the right response"}
+              </h2>
+              <p className="response-intro">
+                {evaluation
+                  ? recommended?.interventions.length
+                    ? `Use ${recommended.interventions.length} ${recommended.interventions.length === 1 ? "team" : "teams"} to cover ${[...new Set(recommended.interventions.map((action) => displayScenario?.assets.find((asset) => asset.id === action.target_asset_id)?.dependency_groups.find((group) => group.id === action.dependency_group_id)?.service_type).filter(Boolean))].join(" and ")} inputs with temporary backup.`
+                    : "No supported dispatch improves this scenario’s objective."
+                  : "The engine is comparing the supported assignments."}
+              </p>
+              <details className="dispatch-details">
+                <summary>
+                  {recommended
+                    ? `${recommended.interventions.length} ${recommended.interventions.length === 1 ? "team" : "teams"} · View assignments`
+                    : "Response assignments"}
+                </summary>
+                <div className="dispatch-list">
+                  {recommended?.interventions.map((action) => {
+                    const resource = displayScenario?.resources.find(
+                      (item) => item.id === action.resource_id,
+                    );
+                    const asset = displayScenario?.assets.find(
+                      (item) => item.id === action.target_asset_id,
+                    );
+                    const route = resource?.travel_times.find(
+                      (item) => item.asset_id === action.target_asset_id,
+                    );
+                    const group = asset?.dependency_groups.find(
+                      (item) => item.id === action.dependency_group_id,
+                    );
+                    return (
+                      <button
+                        className="dispatch-row"
+                        type="button"
+                        key={action.id}
+                        onClick={() => {
+                          setSelectedAssetId(action.target_asset_id);
+                          document
+                            .getElementById("network")
+                            ?.scrollIntoView({ block: "nearest" });
+                        }}
+                      >
+                        <span className="dispatch-symbol">
+                          <Icon
+                            name={
+                              group?.service_type === "water" ? "drop" : "bolt"
+                            }
+                          />
+                        </span>
+                        <span>
+                          <strong>{resource?.name ?? action.resource_id}</strong>
+                          <span>{asset?.name ?? action.target_asset_id}</span>
+                          <small>
+                            {group?.service_type} backup · arrives at minute{" "}
+                            {action.dispatch_minute +
+                              (route?.travel_minutes ?? 0) +
+                              (route?.setup_minutes ?? 0)}
+                          </small>
+                        </span>
+                        <Icon name="arrow" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </details>
+            </div>
+            <div className="benefit-block">
+              <span>Modeled outcome · full {displayScenario?.horizon_minutes ?? "—"} minutes</span>
+              <strong>
+                {evaluation
+                  ? bestBaseline > 0 && score > bestBaseline
+                    ? `${Math.round(((score - bestBaseline) / bestBaseline) * 100)}% higher service score`
+                    : score > bestBaseline
+                      ? "More modeled service restored"
+                      : "Best result under this policy"
+                  : "Comparing outcomes…"}
+              </strong>
+              <p>Against the strongest baseline, with the same resources.</p>
+              <div className="exact-score">
+                <span>
+                  <b>{evaluation ? formatNumber(score) : "—"}</b> recommended
+                </span>
+                <span>vs</span>
+                <span>
+                  <b>{evaluation ? formatNumber(bestBaseline) : "—"}</b>{" "}
+                  baseline
+                </span>
+              </div>
+              <small>weighted service-person-minutes · not lives saved</small>
+              <p className="score-explanation">People receiving each service × minutes available × its priority weight. A model score, not a count of lives saved.</p>
+            </div>
+            <div className="response-tools">
+              <button
+                className="primary-button watch-recovery"
+                disabled={!evaluation || loading || resultsStale}
+                onClick={() => {
+                  setPlanKey("optimized");
+                  setMinute(0);
+                  setPlaying(true);
+                  document.getElementById("network")?.scrollIntoView({ block: "start" });
+                }}
+              >
+                <Icon name="play" />Watch recovery
+              </button>
+              <details className="compare-details">
+                <summary>
+                  Compare all responses <Icon name="branch" />
+                </summary>
+                <p>Select a response to see what changes on the map.</p>
+                {planOptions.map((option) => (
+                  <button
+                    type="button"
+                    className="baseline-line"
+                    key={option.key}
+                    aria-pressed={planKey === option.key}
+                    onClick={() => {
+                      setPlanKey(option.key);
+                      setPlaying(false);
+                    }}
+                  >
+                    <span>{option.label}</span>
+                    <strong>{formatNumber(option.score)}</strong>
+                    <span className="comparison-track">
+                      <span
+                        style={{
+                          width: `${(option.score / Math.max(1, ...planOptions.map((item) => item.score))) * 100}%`,
+                        }}
+                      />
+                    </span>
+                    <small>{option.description}</small>
+                  </button>
+                ))}
+              </details>
+              <a className="audit-shortcut" href="#decision-audit">
+                <Icon name="shield" />
+                <span>
+                  <strong>
+                    {verification?.valid && !resultsStale
+                      ? "Decision verified"
+                      : "Check this decision"}
+                  </strong>
+                  <small>Replay, alternatives and receipt integrity</small>
+                </span>
+                <Icon name="arrow" />
+              </a>
+              <details className="response-more"><summary>Coverage & reasoning</summary>
+              <details className="coverage-details">
+                <summary>Community coverage · full simulation</summary>
+                <p className="section-note">Viewing {PLAN_LABELS[planKey]}</p>
+                {selectedPlan?.demand_metrics.map((metric) => (
+                  <div className="impact-row" key={metric.demand_id}>
+                    <span>
+                      <strong>{metric.community_id.replaceAll("-", " ")}</strong>
+                      <small>{metric.service_type}</small>
+                    </span>
+                    <strong>
+                      {(metric.coverage_parts_per_million / 10000).toFixed(1)}%
+                    </strong>
+                  </div>
+                ))}
+              </details>
+              <details className="method-details">
+                <summary>Why this response?</summary>
+                {evaluation && (
+                  <RecommendationInsight
+                    scenario={evaluation.scenario}
+                    evaluation={evaluation}
+                  />
+                )}
+                <p>
+                  {evaluation?.optimization.exhaustive_search_complete
+                    ? `${evaluation.optimization.plans_evaluated} plans checked exhaustively.`
+                    : "The result is not established until the search completes."}
+                </p>
+                <p>
+                  Policy weights and coverage tolerance influence the
+                  recommendation. Exact search took{" "}
+                  {evaluation
+                    ? (
+                        evaluation.optimization.computation_time_ns / 1_000_000
+                      ).toFixed(1)
+                    : "—"}{" "}
+                  ms on the backend.
+                </p>
+              </details>
+              </details>
+            </div>
+          </section>
+          <section
             className="network-panel"
             id="network"
             aria-labelledby="network-title"
           >
+            <div className="map-toolbar">
+              {" "}
+              <div className="timeline-title">
+                <h3>{replayPhase}</h3><p>{PLAN_LABELS[planKey]} · Minute {minute} of {displayScenario?.horizon_minutes ?? "—"}</p>
+                <div className="replay-controls">
+                  <button
+                    type="button"
+                    className="play-button"
+                    onClick={() => {
+                      if (minute >= (displayScenario?.horizon_minutes ?? 0))
+                        setMinute(0);
+                      setPlaying((value) => !value);
+                    }}
+                    disabled={!evaluation || loading || resultsStale}
+                    aria-label={playing ? "Pause replay" : "Play replay"}
+                  >
+                    <Icon name={playing ? "pause" : "play"} />
+                    <span>{playing ? "Pause" : minute >= (displayScenario?.horizon_minutes ?? 0) ? "Replay" : "Play recovery"}</span>
+                  </button>
+                </div>
+              </div>
+              <div className="replay-position"><strong>{availableServices} of {displayScenario?.demands.length ?? 0} community services available</strong><span>{atEndBoundary ? `${backupEnded ? "Temporary backup has ended. " : ""}This endpoint adds no service time; the score covers minutes 0–${Math.max(0, (displayScenario?.horizon_minutes ?? 1) - 1)}.` : minute === 0 ? "Services at the start of the selected plan. The benefit above covers the full simulation." : "Availability at this minute, from the backend trace."}</span></div>
+              <div className="scrubber">
+                <span>0 min</span>
+                <input
+                  aria-label="Simulation minute"
+                  type="range"
+                  min={0}
+                  max={displayScenario?.horizon_minutes ?? 1}
+                  value={Math.min(
+                    minute,
+                    displayScenario?.horizon_minutes ?? 0,
+                  )}
+                  onChange={(event) => {
+                    setPlaying(false);
+                    setMinute(Number(event.target.value));
+                  }}
+                  disabled={!evaluation || loading || resultsStale}
+                />
+                <span>{displayScenario?.horizon_minutes ?? "—"} min</span>
+                <output aria-live="off">Minute {minute}</output>
+                <button className="time-jump" disabled={!evaluation || loading || resultsStale} onClick={() => {setPlaying(false); setMinute(0);}}>Initial state</button>
+                <button className="time-jump" disabled={!evaluation || loading || resultsStale} onClick={() => {setPlaying(false); setMinute(displayScenario?.horizon_minutes ?? 0);}}>End boundary</button>
+              </div>
+            </div>
+
             <div className="section-heading">
               <div>
                 <h2 id="network-title">
                   {inspectedAsset
                     ? humanAssetName(inspectedAsset.name)
-                    : "Follow the connections"}
+                    : "Infrastructure & community services"}
                 </h2>
                 <p className="section-note">
                   {inspectedAsset
                     ? inspectedAsset.dependency_groups.length
                       ? `Needs ${inspectedAsset.dependency_groups.map((group) => `${group.service_type} from ${group.provider_asset_ids.map((id) => humanAssetName(displayScenario?.assets.find((asset) => asset.id === id)?.name ?? id)).join(" or ")}`).join(" and ")}.`
                       : `Source supply for ${inspectedAsset.provides}.`
-                    : "Select a place to see its dependencies and the communities it supports."}
+                    : "Follow supply to services. Select an asset to inspect its required inputs."}
                 </p>
               </div>
               <span className="viewing-plan">
@@ -541,6 +806,7 @@ function App() {
                 {displayScenario ? (
                   <DependencyMap
                     assets={displayScenario.assets}
+                    initialStep={trace[0]}
                     step={
                       currentStep ?? {
                         minute: 0,
@@ -596,6 +862,8 @@ function App() {
                   })}
                 </div>
                 <div className="legend" aria-label="Asset status legend">
+                  <span className="connection-key"><i /> Solid: supply available</span>
+                  <span className="connection-key connection-unavailable"><i /> Dashed: supply unavailable</span>
                   <span>
                     <i className="legend-good" />
                     Working
@@ -618,8 +886,7 @@ function App() {
                   </span>
                 </div>
                 <p className="map-caption">
-                  Schematic infrastructure, not a geographic map. Paths show
-                  dependencies, not physical flows.
+                  Schematic, not geographic. Arrows show required supply relationships, not physical flows.
                 </p>
               </div>
             </div>
@@ -662,48 +929,6 @@ function App() {
                     </div>
                   ))}
             </fieldset>
-            <div className="map-toolbar">
-              {" "}
-              <div className="timeline-title">
-                <h3>Replay service delivery</h3>
-                <div className="replay-controls">
-                  <button
-                    type="button"
-                    className="play-button"
-                    onClick={() => {
-                      if (minute >= (displayScenario?.horizon_minutes ?? 0))
-                        setMinute(0);
-                      setPlaying((value) => !value);
-                    }}
-                    disabled={!evaluation}
-                    aria-label={playing ? "Pause replay" : "Play replay"}
-                  >
-                    <Icon name={playing ? "pause" : "play"} />
-                    <span>{playing ? "Pause" : "Play changes"}</span>
-                  </button>
-                </div>
-              </div>
-              <div className="scrubber">
-                <span>0 min</span>
-                <input
-                  aria-label="Simulation minute"
-                  type="range"
-                  min={0}
-                  max={displayScenario?.horizon_minutes ?? 1}
-                  value={Math.min(
-                    minute,
-                    displayScenario?.horizon_minutes ?? 0,
-                  )}
-                  onChange={(event) => {
-                    setPlaying(false);
-                    setMinute(Number(event.target.value));
-                  }}
-                  disabled={!evaluation}
-                />
-                <span>{displayScenario?.horizon_minutes ?? "—"} min</span>
-                <output aria-live="off">Minute {minute}</output>
-              </div>
-            </div>
             <aside
               className="asset-inspector"
               aria-label="Selected infrastructure"
@@ -730,7 +955,8 @@ function App() {
                       ),
                     )}
                   </p>
-                  <h4>Depends on</h4>
+                  <h4>Required inputs</h4>
+                  <p>All input groups are required (AND). Within each group, any listed provider can supply it (OR). Reserves or active backup can temporarily cover missing inputs.</p>
                   <div className="asset-links">
                     {inspectedAsset.dependency_groups.length ? (
                       inspectedAsset.dependency_groups.map((group) => (
@@ -750,6 +976,7 @@ function App() {
                               {displayScenario.assets.find(
                                 (asset) => asset.id === id,
                               )?.name ?? id}
+                              <small>{currentStep?.assets.find((asset) => asset.asset_id === id)?.service_available ? "Supply available" : "Supply unavailable"}</small>
                               <Icon name="arrow" />
                             </button>
                           ))}
@@ -861,202 +1088,7 @@ function App() {
             </div>
           </section>
 
-          <section
-            id="response"
-            className={`response-sheet ${resultsStale ? "results-stale" : ""}`}
-            aria-label="Recommended response and comparison"
-            aria-busy={loading}
-          >
-            {evaluation &&
-              !evaluation.optimization.exhaustive_search_complete && (
-                <p className="search-state">Search incomplete</p>
-              )}
-            <div className="response-eyebrow">
-              <span className="response-check">
-                <Icon name="check" />
-              </span>{" "}
-              Recommended response
-            </div>
-            <h2>
-              {recommended?.interventions.length
-                ? new Set(
-                    recommended.interventions.map(
-                      (action) => action.target_asset_id,
-                    ),
-                  ).size === 1
-                  ? `Support the ${humanAssetName(displayScenario?.assets.find((asset) => asset.id === recommended.interventions[0].target_asset_id)?.name ?? "shared infrastructure").toLowerCase()}`
-                  : "Coordinate the available teams"
-                : evaluation
-                  ? "Keep your teams available"
-                  : "Finding the right response"}
-            </h2>
-            <p className="response-intro">
-              {evaluation
-                ? recommended?.interventions.length
-                  ? `Use ${recommended.interventions.length} ${recommended.interventions.length === 1 ? "team" : "teams"} to cover ${[...new Set(recommended.interventions.map((action) => displayScenario?.assets.find((asset) => asset.id === action.target_asset_id)?.dependency_groups.find((group) => group.id === action.dependency_group_id)?.service_type).filter(Boolean))].join(" and ")} inputs with temporary backup.`
-                  : "No supported dispatch improves this scenario’s objective."
-                : "The engine is comparing the supported assignments."}
-            </p>
-            <details className="dispatch-details">
-              <summary>
-                {recommended
-                  ? `${recommended.interventions.length} ${recommended.interventions.length === 1 ? "team" : "teams"} · View assignments`
-                  : "Response assignments"}
-              </summary>
-              <div className="dispatch-list">
-                {recommended?.interventions.map((action) => {
-                  const resource = displayScenario?.resources.find(
-                    (item) => item.id === action.resource_id,
-                  );
-                  const asset = displayScenario?.assets.find(
-                    (item) => item.id === action.target_asset_id,
-                  );
-                  const route = resource?.travel_times.find(
-                    (item) => item.asset_id === action.target_asset_id,
-                  );
-                  const group = asset?.dependency_groups.find(
-                    (item) => item.id === action.dependency_group_id,
-                  );
-                  return (
-                    <button
-                      className="dispatch-row"
-                      type="button"
-                      key={action.id}
-                      onClick={() => {
-                        setSelectedAssetId(action.target_asset_id);
-                        document
-                          .getElementById("network")
-                          ?.scrollIntoView({ block: "nearest" });
-                      }}
-                    >
-                      <span className="dispatch-symbol">
-                        <Icon
-                          name={
-                            group?.service_type === "water" ? "drop" : "bolt"
-                          }
-                        />
-                      </span>
-                      <span>
-                        <strong>{resource?.name ?? action.resource_id}</strong>
-                        <span>{asset?.name ?? action.target_asset_id}</span>
-                        <small>
-                          {group?.service_type} backup · arrives at minute{" "}
-                          {action.dispatch_minute +
-                            (route?.travel_minutes ?? 0) +
-                            (route?.setup_minutes ?? 0)}
-                        </small>
-                      </span>
-                      <Icon name="arrow" />
-                    </button>
-                  );
-                })}
-              </div>
-            </details>
-            <div className="benefit-block">
-              <span>Demonstrated benefit</span>
-              <strong>
-                {evaluation
-                  ? bestBaseline > 0 && score > bestBaseline
-                    ? `${Math.round(((score - bestBaseline) / bestBaseline) * 100)}% higher service score`
-                    : score > bestBaseline
-                      ? "More modeled service restored"
-                      : "Best result under this policy"
-                  : "Comparing outcomes…"}
-              </strong>
-              <p>Against the strongest baseline, with the same resources.</p>
-              <div className="exact-score">
-                <span>
-                  <b>{evaluation ? formatNumber(score) : "—"}</b> recommended
-                </span>
-                <span>vs</span>
-                <span>
-                  <b>{evaluation ? formatNumber(bestBaseline) : "—"}</b>{" "}
-                  baseline
-                </span>
-              </div>
-              <small>weighted service-person-minutes · not lives saved</small>
-            </div>
-            <details className="compare-details">
-              <summary>
-                Compare all responses <Icon name="branch" />
-              </summary>
-              <p>Select a response to see what changes on the map.</p>
-              {planOptions.map((option) => (
-                <button
-                  type="button"
-                  className="baseline-line"
-                  key={option.key}
-                  aria-pressed={planKey === option.key}
-                  onClick={() => {
-                    setPlanKey(option.key);
-                    setPlaying(false);
-                  }}
-                >
-                  <span>{option.label}</span>
-                  <strong>{formatNumber(option.score)}</strong>
-                  <span className="comparison-track">
-                    <span
-                      style={{
-                        width: `${(option.score / Math.max(1, ...planOptions.map((item) => item.score))) * 100}%`,
-                      }}
-                    />
-                  </span>
-                  <small>{option.description}</small>
-                </button>
-              ))}
-            </details>
-            <a className="audit-shortcut" href="#decision-audit">
-              <Icon name="shield" />
-              <span>
-                <strong>
-                  {verification?.valid && !resultsStale
-                    ? "Decision verified"
-                    : "Check this decision"}
-                </strong>
-                <small>Replay, alternatives and receipt integrity</small>
-              </span>
-              <Icon name="arrow" />
-            </a>
-            <details className="coverage-details">
-              <summary>Community coverage · full simulation</summary>
-              <p className="section-note">Viewing {PLAN_LABELS[planKey]}</p>
-              {selectedPlan?.demand_metrics.map((metric) => (
-                <div className="impact-row" key={metric.demand_id}>
-                  <span>
-                    <strong>{metric.community_id.replaceAll("-", " ")}</strong>
-                    <small>{metric.service_type}</small>
-                  </span>
-                  <strong>
-                    {(metric.coverage_parts_per_million / 10000).toFixed(1)}%
-                  </strong>
-                </div>
-              ))}
-            </details>
-            <details className="method-details">
-              <summary>Why this response?</summary>
-              {evaluation && (
-                <RecommendationInsight
-                  scenario={evaluation.scenario}
-                  evaluation={evaluation}
-                />
-              )}
-              <p>
-                {evaluation?.optimization.exhaustive_search_complete
-                  ? `${evaluation.optimization.plans_evaluated} plans checked exhaustively.`
-                  : "The result is not established until the search completes."}
-              </p>
-              <p>
-                Policy weights and coverage tolerance influence the
-                recommendation. Exact search took{" "}
-                {evaluation
-                  ? (
-                      evaluation.optimization.computation_time_ns / 1_000_000
-                    ).toFixed(1)
-                  : "—"}{" "}
-                ms on the backend.
-              </p>
-            </details>
-          </section>
+
         </div>
 
         <ReceiptInspector
@@ -1455,6 +1487,7 @@ function RecommendationInsight({
 
 function DependencyMap({
   assets,
+  initialStep,
   step,
   demands,
   selectedPlan,
@@ -1466,6 +1499,7 @@ function DependencyMap({
   playing,
 }: {
   assets: Asset[];
+  initialStep: TimeStep | undefined;
   step: TimeStep;
   demands: Scenario["demands"];
   selectedPlan: Plan | undefined;
@@ -1512,6 +1546,7 @@ function DependencyMap({
         providerId,
         targetId: asset.id,
         service: group.service_type,
+        alternatives: group.provider_asset_ids.length > 1,
       })),
     ),
   );
@@ -1558,21 +1593,29 @@ function DependencyMap({
                     ? "buffered"
                     : "active";
             let path: string;
+            let labelX = (from.x + to.x) / 2, labelY = (from.y + to.y) / 2;
             if (layout.orientation === "vertical") {
               const x = from.x + glyphX;
               const lane = 14 + (index % 3) * 8;
+              labelX = 24 + (index % 3) * 8; labelY = (from.y + to.y) / 2;
               path = `M ${x - 25} ${from.y} C ${lane} ${from.y}, ${lane} ${to.y}, ${x - 25} ${to.y}`;
             } else {
               const x1 = from.x + 34,
                 x2 = to.x - 34;
               if (to.level - from.level > 1) {
                 const lane = 20 + index * 6;
+                labelX = from.x + (to.x - from.x) * 0.3;
+                labelY = from.y * 0.343 + to.y * 0.027 + lane * 0.63 - 12;
                 path = `M ${from.x} ${from.y - 34} C ${from.x} ${lane}, ${to.x} ${lane}, ${to.x} ${to.y - 34}`;
               } else {
                 const curve = Math.max(30, (x2 - x1) * 0.5);
                 path = `M ${x1} ${from.y} C ${x1 + curve} ${from.y}, ${x2 - curve} ${to.y}, ${x2} ${to.y}`;
               }
             }
+            const providerName = humanAssetName(assets.find((asset) => asset.id === edge.providerId)?.name ?? edge.providerId);
+            const targetName = humanAssetName(assets.find((asset) => asset.id === edge.targetId)?.name ?? edge.targetId);
+            const wasAvailable = initialStep?.assets.find((item) => item.asset_id === edge.providerId)?.service_available;
+            const edgeLabel = `${edge.service} · ${status === "active" || status === "buffered" ? wasAvailable === false ? "restored" : "available" : status === "pending" ? "pending" : "unavailable"}`;
             const linked =
               selectedAssetId &&
               linkedAssets.has(edge.providerId) &&
@@ -1582,8 +1625,9 @@ function DependencyMap({
                 key={edge.key}
                 className={`edge-group edge-${status} ${selectedAssetId && !linked ? "context-dimmed" : ""} ${linked ? "edge-linked" : ""}`}
               >
-                <title>{`${edge.service}: ${edge.providerId} to ${edge.targetId}`}</title>
+                <title>{`${providerName} → ${targetName}: ${edgeLabel}${edge.alternatives ? "; alternative provider (OR)" : "; required provider"}`}</title>
                 <path d={path} markerEnd="url(#arrow-tip)" />
+                {(layout.orientation === "horizontal" && (!selectedAssetId || linked)) && <text className="edge-label" x={labelX} y={labelY} textAnchor="middle">{edgeLabel}</text>}
                 {playing && (status === "active" || status === "buffered") && (
                   <circle className="service-tracer" r="3">
                     <animateMotion
@@ -1618,13 +1662,14 @@ function DependencyMap({
                     : state.unsatisfied_dependency_group_ids.length
                       ? "buffered"
                       : "online";
+            const restored = state?.service_available && initialStep?.assets.find((item) => item.asset_id === asset.id)?.service_available === false;
             const statusLabel = {
               pending: "Awaiting simulation",
               faulted: "Physical failure",
               offline: "Service unavailable",
-              backup: "Backup active",
+              backup: restored ? "Restored with backup" : "Backup active",
               buffered: "On reserve",
-              online: "Service available",
+              online: restored ? "Service restored" : "Service available",
             }[status];
             const mobile = layout.orientation === "vertical";
             const name = humanAssetName(asset.name);
@@ -1663,6 +1708,7 @@ function DependencyMap({
                   }
                 }}
               >
+                <rect className="node-hit-area" x={-layout.nodeWidth / 2} y={-44} width={layout.nodeWidth} height={layout.nodeHeight} fill="transparent" aria-hidden="true" />
                 <g className="node-marker" transform={`translate(${glyphX},0)`}>
                   <circle className="node-halo" r="42" />
                   <circle className="node-disc" r="31" />
@@ -1759,7 +1805,7 @@ export function layoutAssets(assets: Asset[], width: number) {
     for (const [level, items] of byLevel) {
       maxRows = Math.max(maxRows, items.length);
       items.forEach((asset, row) => {
-        let y = 110 + row * 220;
+        let y = 100 + row * 170;
         let x = maxLevel
           ? nodeWidth / 2 + 14 + (level * (width - nodeWidth - 28)) / maxLevel
           : width / 2;
@@ -1770,18 +1816,18 @@ export function layoutAssets(assets: Asset[], width: number) {
           items.filter((item) => item.dependency_groups.length > 1).length === 1
         ) {
           const complex = asset.dependency_groups.length > 1;
-          y = complex ? 210 : 70;
+          y = complex ? 185 : 65;
           x += complex ? -24 : 45;
         }
         if (maxLevel === 2 && level === 2 && items.length === 2)
-          y = 130 + row * 220;
+          y = 100 + row * 170;
         positions.set(asset.id, { x, y, level, row });
       });
     }
     return {
       orientation: "horizontal" as const,
       width,
-      height: Math.max(460, 240 + (maxRows - 1) * 220),
+      height: Math.max(390, 220 + (maxRows - 1) * 170),
       nodeWidth,
       nodeHeight: 140,
       positions,

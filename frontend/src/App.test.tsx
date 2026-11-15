@@ -493,8 +493,32 @@ describe("LIFELINE incident experience", () => {
     await user.tab();
     expect(screen.getByLabelText(/active scenario/i)).toHaveFocus();
     await user.tab();
-    expect(screen.getByRole("button", { name: /^Grid feeder:/ })).toHaveFocus();
+    expect(screen.getByText("1 team · View assignments")).toHaveFocus();
+
   });
+  it("starts the recommended replay from zero after a baseline comparison and exposes final state", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByRole("radio", { name: /Recommended/ });
+    await user.click(screen.getByRole("radio", { name: /^No response/ }));
+    await user.click(screen.getByRole("button", { name: "End boundary" }));
+    expect(screen.getByRole("heading", {name: "End of modeled window"})).toBeInTheDocument();
+    // jsdom does not implement scrolling. This is navigation to the visible replay, not computation.
+    const scroll = vi.fn();
+    document.getElementById("network")!.scrollIntoView = scroll;
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole("button", {name: "Watch recovery"}));
+      expect(screen.getByRole("radio", {name: /^Recommended/})).toBeChecked();
+      expect(screen.getByRole("slider", {name: "Simulation minute"})).toHaveValue("0");
+      expect(screen.getByRole("heading", {name: "Initial state · Minute 0"})).toBeInTheDocument();
+      expect(screen.getByRole("button", {name: "Pause replay"})).toBeInTheDocument();
+      await act(async () => { await vi.advanceTimersByTimeAsync(850); });
+      expect(screen.getByRole("heading", {name: "Response underway"})).toBeInTheDocument();
+      expect(api.evaluate).toHaveBeenCalledTimes(1);
+    } finally { vi.useRealTimers(); }
+  });
+
   it("stops replay at the final boundary instead of silently returning to the failure", async () => {
     render(<App />);
     await screen.findByRole("radio", { name: /Recommended/ });
@@ -547,7 +571,7 @@ describe("LIFELINE incident experience", () => {
       name: "Selected infrastructure",
     });
     expect(
-      within(inspector).getByRole("button", { name: "Grid feeder" }),
+      within(inspector).getByRole("button", { name: "Grid feeder Supply unavailable" }),
     ).toBeInTheDocument();
     expect(inspector).toHaveTextContent("deep sector (water)");
     await user.click(
