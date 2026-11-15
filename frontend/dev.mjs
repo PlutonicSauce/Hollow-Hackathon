@@ -5,11 +5,10 @@ import { fileURLToPath } from "node:url";
 
 const frontend = fileURLToPath(new URL(".", import.meta.url));
 const root = fileURLToPath(new URL("..", import.meta.url));
-const externalRoot = "/Volumes/XcodeSSD";
-const dataRoot = join(externalRoot, "Hollow-DevData");
+const dataRoot = join(root, ".lifeline");
 
-if (!existsSync(join(root, "backend")) || !existsSync(dataRoot)) {
-  console.error("LIFELINE or Hollow-DevData is unavailable. Mount XcodeSSD first.");
+if (!existsSync(join(root, "backend")) || !existsSync(join(root, "backend", ".venv", "bin", "python"))) {
+  console.error("Backend environment is missing. Follow the setup instructions in README.md.");
   process.exit(1);
 }
 

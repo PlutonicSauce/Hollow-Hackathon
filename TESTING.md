@@ -45,10 +45,10 @@ cd backend
 
 ## Milestone 4 application tests
 
-Run the API and UI checks from the external repository:
+Run the API and UI checks from the local checkout:
 
 ```sh
-cd /Volumes/XcodeSSD/Hollow-Hackathon/backend
+cd ~/Projects/LIFELINE/backend
 .venv/bin/python -m unittest discover -s tests -v
 cd ../frontend
 npm test

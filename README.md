@@ -6,25 +6,26 @@ The Milestone 4 web demo connects directly to the Python engine. It does not cal
 
 ## Run the interactive demo
 
-The repository is intended to live at `/Volumes/XcodeSSD/Hollow-Hackathon`. Mount `XcodeSSD` before launching it. Frontend packages, Python bytecode, pip/npm caches, logs, and temporary files are kept on that external volume.
+Use Python 3.11–3.13 and Node 22 or newer (Vite requires Node 22.12+ on the Node 22 line). From the repository root:
 
 ```sh
-cd /Volumes/XcodeSSD/Hollow-Hackathon/frontend
-npm ci --cache /Volumes/XcodeSSD/Hollow-DevData/caches/npm
+python3.13 -m venv backend/.venv
+backend/.venv/bin/python -m pip install --no-cache-dir -e ./backend
+cd frontend
+npm ci --cache ../.lifeline/caches/npm
 npm run dev
 ```
 
-Open the local Vite URL printed in the terminal (normally `http://127.0.0.1:5173`). One command starts the Python API on `127.0.0.1:8000` and the frontend. The development launcher checks that the repository and `Hollow-DevData` exist on the mounted external volume before starting; it does not fall back to an internal path.
+Open the local Vite URL printed in the terminal (normally `http://127.0.0.1:5173`). One command starts the Python API on `127.0.0.1:8000` and the frontend. The launcher resolves paths relative to this checkout and stores logs, caches, and temporary files in ignored `.lifeline/`. No external drive is required. Stop both processes with Ctrl-C.
 
-The API uses the existing environment at `backend/.venv`. To run it directly:
+To run the API directly from the repository root:
 
 ```sh
-cd /Volumes/XcodeSSD/Hollow-Hackathon/backend
-PYTHONPYCACHEPREFIX=/Volumes/XcodeSSD/Hollow-DevData/caches/python-pycache \
-PIP_CACHE_DIR=/Volumes/XcodeSSD/Hollow-DevData/caches/pip \
-TMPDIR=/Volumes/XcodeSSD/Hollow-DevData/temp \
+cd backend
 .venv/bin/python -m engine.api
 ```
+
+After `npm run build` in `frontend/`, the API also serves the production frontend at `http://127.0.0.1:8000`. This is a loopback-only local demo, not a public deployment configuration.
 
 ## Demo flow
 
@@ -39,10 +40,10 @@ The model is deliberately abstract: binary service, AND dependency groups, OR pr
 ## Tests
 
 ```sh
-cd /Volumes/XcodeSSD/Hollow-Hackathon/backend
+cd ~/Projects/LIFELINE/backend
 .venv/bin/python -m unittest discover -s tests -v
 
-cd /Volumes/XcodeSSD/Hollow-Hackathon/frontend
+cd ~/Projects/LIFELINE/frontend
 npm test
 npm run build
 ```

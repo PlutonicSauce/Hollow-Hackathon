@@ -48,7 +48,7 @@ The GitHub workflow runs `python -m unittest discover -s tests -v` on Python 3.1
 - User-edited resource availability and travel times are sent through `Scenario.model_validate` before evaluation.
 - The displayed weighted objective is never called lives saved.
 - The local API binds to 127.0.0.1. Do not expose it on a public interface without a separate security review and authentication design.
-- The project dev launcher requires `/Volumes/XcodeSSD/Hollow-Hackathon` and `/Volumes/XcodeSSD/Hollow-DevData`; cache/temp paths do not silently fall back to the internal volume.
+- The project dev launcher resolves this checkout and stores cache/temp/log files in ignored `.lifeline/`. It requires `backend/.venv`; no external drive is needed.
 - Copilot session history and VS Code user-data are controlled by the active editor launch configuration, not by the LIFELINE dev launcher. Verify those separately; this environment may still keep session state internally.
 
 ## Milestone 5: The Field Dossier Redesign
