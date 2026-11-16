@@ -521,7 +521,6 @@ describe("LIFELINE incident experience", () => {
     for (const name of [
       "LIFELINE home",
       "Explore",
-      "Response",
       "Decision audit",
     ]) {
       await user.tab();
@@ -530,7 +529,7 @@ describe("LIFELINE incident experience", () => {
     await user.tab();
     expect(screen.getByLabelText(/active scenario/i)).toHaveFocus();
     await user.tab();
-    expect(screen.getByText("1 team · View assignments")).toHaveFocus();
+    expect(screen.getByText("Inspect full network, assignments and simulation diagnostics")).toHaveFocus();
 
   });
   it("starts the recommended replay from zero after a baseline comparison and exposes final state", async () => {

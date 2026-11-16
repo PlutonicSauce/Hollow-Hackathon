@@ -13,6 +13,7 @@ from pydantic import ValidationError
 
 from .models import Intervention, OptimizationPolicy, Scenario
 from .optimizer import OptimizationLimitError, optimize_interventions
+from .certificates import build_coordination_certificate, verify_coordination_certificate
 from .receipts import create_decision_receipt
 from .scenarios import (
     coupled_utility_scenario,
@@ -90,11 +91,17 @@ def evaluate_scenario(
         replay_scenario = _scenario_with_interventions(scenario, interventions)
         traces[name] = simulate(replay_scenario).model_dump(mode="json")["steps"]
     receipt = create_decision_receipt(scenario, result)
+    certificate = build_coordination_certificate(scenario, result.selected_plan.interventions)
+    certificate_report = verify_coordination_certificate(scenario, certificate)
+    if certificate_report.status != "passed":
+        raise ValueError("Generated coordination evidence did not pass replay checks.")
     return {
         "scenario": scenario.model_dump(mode="json"),
         "no_intervention_simulation": simulate(scenario).model_dump(mode="json"),
         "optimization": result.model_dump(mode="json"),
         "receipt": receipt.model_dump(mode="json"),
+        "coordination_certificate": certificate.model_dump(mode="json"),
+        "coordination_verification": certificate_report.model_dump(mode="json"),
         "traces": traces,
     }
 

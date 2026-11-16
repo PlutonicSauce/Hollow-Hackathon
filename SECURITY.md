@@ -34,3 +34,7 @@ Uploads require JSON and Content-Length; chunked bodies are rejected. A socket s
 Requests are handled in memory and not persisted. Application access logs are disabled; Render may retain platform request metadata and server lifecycle logs. Receipts can include every submitted scenario field, so treat them as public data. No secrets are required or committed. Keep provider credentials in the provider account, not in this repository. Runtime dependencies and Node packages are pinned; update them deliberately and rerun CI.
 
 Report a vulnerability privately to `seshank0830@gmail.com` with reproduction details, without real incident data or credentials. This limited demo is not a security audit or a safety certification.
+
+## Coordination evidence
+
+Certificate generation and replay checking share the existing admitted evaluation subprocess and its OS limits. A four-action cap bounds subset enumeration to 16. Canonical action metadata, strict numeric types, claim scope and replayed availability are checked. No public certificate-upload endpoint is exposed. Oversized results receive bounded rejection. Hashes provide integrity checking, not authorship; builder and verifier share claim formulas. See [scope](COORDINATION_CERTIFICATES.md).

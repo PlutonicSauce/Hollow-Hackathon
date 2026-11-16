@@ -48,3 +48,7 @@ backend/.venv/bin/python scripts/smoke.py https://YOUR-SERVICE.onrender.com
 ```
 
 The script loads the production frontend/assets, evaluates the 8-plan coupled scenario (1,100 versus 720/720 and no response 0), verifies all seven receipt checks and the known digest, and checks public input/security responses. Local mode also checks live concurrency, slow-upload termination, and rate saturation. It starts/stops its own production server; remote mode never performs saturation checks.
+
+## Coordination evidence (design branch)
+
+Evaluation additionally returns `coordination_certificate` and `coordination_verification`. Subset availability arrays include H+1 boundaries; the final boundary contributes no score. No new public endpoint is added. See [certificate semantics and limits](COORDINATION_CERTIFICATES.md). Decision Receipt fields and verification contracts are unchanged.

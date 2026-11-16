@@ -1,0 +1,767 @@
+{
+  "scenario": {
+    "id": "hollow-feeder-cascade",
+    "horizon_minutes": 4,
+    "assets": [
+      {
+        "id": "feeder",
+        "name": "Geothermal power feeder",
+        "kind": "source",
+        "provides": "power",
+        "dependency_groups": [],
+        "buffer": {
+          "unit": "reserve_unit",
+          "capacity_units": 0,
+          "initial_units": 0,
+          "depletion_units_per_minute": 0,
+          "recovery_units_per_minute": 0
+        }
+      },
+      {
+        "id": "raw-water",
+        "name": "Deep aquifer",
+        "kind": "source",
+        "provides": "water",
+        "dependency_groups": [],
+        "buffer": {
+          "unit": "reserve_unit",
+          "capacity_units": 0,
+          "initial_units": 0,
+          "depletion_units_per_minute": 0,
+          "recovery_units_per_minute": 0
+        }
+      },
+      {
+        "id": "deep-pump",
+        "name": "Deep water pump",
+        "kind": "facility",
+        "provides": "water",
+        "dependency_groups": [
+          {
+            "id": "pump-power",
+            "service_type": "power",
+            "provider_asset_ids": [
+              "feeder"
+            ]
+          },
+          {
+            "id": "pump-source-water",
+            "service_type": "water",
+            "provider_asset_ids": [
+              "raw-water"
+            ]
+          }
+        ],
+        "buffer": {
+          "unit": "reserve_unit",
+          "capacity_units": 1,
+          "initial_units": 1,
+          "depletion_units_per_minute": 1,
+          "recovery_units_per_minute": 1
+        }
+      },
+      {
+        "id": "scrubber-battery",
+        "name": "Scrubber backup power",
+        "kind": "facility",
+        "provides": "power",
+        "dependency_groups": [
+          {
+            "id": "battery-grid-input",
+            "service_type": "power",
+            "provider_asset_ids": [
+              "feeder"
+            ]
+          }
+        ],
+        "buffer": {
+          "unit": "reserve_unit",
+          "capacity_units": 4,
+          "initial_units": 4,
+          "depletion_units_per_minute": 1,
+          "recovery_units_per_minute": 1
+        }
+      },
+      {
+        "id": "air-scrubber",
+        "name": "Deep-sector air scrubber",
+        "kind": "facility",
+        "provides": "air",
+        "dependency_groups": [
+          {
+            "id": "scrubber-power",
+            "service_type": "power",
+            "provider_asset_ids": [
+              "feeder",
+              "scrubber-battery"
+            ]
+          },
+          {
+            "id": "scrubber-water",
+            "service_type": "water",
+            "provider_asset_ids": [
+              "deep-pump"
+            ]
+          }
+        ],
+        "buffer": {
+          "unit": "reserve_unit",
+          "capacity_units": 0,
+          "initial_units": 0,
+          "depletion_units_per_minute": 0,
+          "recovery_units_per_minute": 0
+        }
+      },
+      {
+        "id": "clinic",
+        "name": "Deep-sector clinic",
+        "kind": "demand_endpoint",
+        "provides": "medical",
+        "dependency_groups": [
+          {
+            "id": "clinic-power",
+            "service_type": "power",
+            "provider_asset_ids": [
+              "feeder"
+            ]
+          },
+          {
+            "id": "clinic-air",
+            "service_type": "air",
+            "provider_asset_ids": [
+              "air-scrubber"
+            ]
+          }
+        ],
+        "buffer": {
+          "unit": "reserve_unit",
+          "capacity_units": 3,
+          "initial_units": 3,
+          "depletion_units_per_minute": 1,
+          "recovery_units_per_minute": 1
+        }
+      }
+    ],
+    "demands": [
+      {
+        "id": "shelter-air",
+        "community_id": "deep-shelter",
+        "served_by_asset_id": "air-scrubber",
+        "service_type": "air",
+        "population": 40,
+        "priority_weight": 3
+      },
+      {
+        "id": "clinic-medical",
+        "community_id": "clinic-district",
+        "served_by_asset_id": "clinic",
+        "service_type": "medical",
+        "population": 20,
+        "priority_weight": 10
+      }
+    ],
+    "faults": [
+      {
+        "id": "geothermal-feeder-outage",
+        "asset_id": "feeder",
+        "start_minute": 0,
+        "end_minute": null
+      }
+    ],
+    "resources": [
+      {
+        "id": "mobile-generator",
+        "name": "Mobile generator",
+        "capabilities": [
+          "power"
+        ],
+        "travel_times": [
+          {
+            "asset_id": "deep-pump",
+            "travel_minutes": 0,
+            "setup_minutes": 0
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "travel_minutes": 0,
+            "setup_minutes": 0
+          },
+          {
+            "asset_id": "air-scrubber",
+            "travel_minutes": 0,
+            "setup_minutes": 0
+          },
+          {
+            "asset_id": "clinic",
+            "travel_minutes": 0,
+            "setup_minutes": 0
+          }
+        ]
+      }
+    ],
+    "interventions": []
+  },
+  "optimization": {
+    "policy": {
+      "primary_tolerance_ppm": 0,
+      "max_candidate_plans": 100000
+    },
+    "candidate_plans": 5,
+    "feasible_plans": 5,
+    "plans_evaluated": 5,
+    "fairness_eligible_plans": 1,
+    "exhaustive_search_complete": true,
+    "best_primary_score": 1080,
+    "selected_plan": {
+      "plan_id": "[[\"mobile-generator\",\"deep-pump\",\"pump-power\"]]",
+      "interventions": [
+        {
+          "id": "assignment:[\"mobile-generator\",\"deep-pump\",\"pump-power\"]",
+          "resource_id": "mobile-generator",
+          "target_asset_id": "deep-pump",
+          "dependency_group_id": "pump-power",
+          "dispatch_minute": 0,
+          "duration_minutes": null
+        }
+      ],
+      "idle_resource_ids": [],
+      "objective": {
+        "weighted_service_person_minutes": 1080,
+        "minimum_community_service_coverage_ppm": 750000,
+        "deployment_minutes": 0,
+        "intervention_count": 1
+      },
+      "demand_metrics": [
+        {
+          "demand_id": "shelter-air",
+          "community_id": "deep-shelter",
+          "service_type": "air",
+          "population": 40,
+          "served_minutes": 4,
+          "service_person_minutes": 160,
+          "total_service_person_minutes": 160,
+          "coverage_parts_per_million": 1000000,
+          "priority_weight": 3,
+          "weighted_service_person_minutes": 480
+        },
+        {
+          "demand_id": "clinic-medical",
+          "community_id": "clinic-district",
+          "service_type": "medical",
+          "population": 20,
+          "served_minutes": 3,
+          "service_person_minutes": 60,
+          "total_service_person_minutes": 80,
+          "coverage_parts_per_million": 750000,
+          "priority_weight": 10,
+          "weighted_service_person_minutes": 600
+        }
+      ],
+      "community_service_coverages": [
+        {
+          "demand_id": "clinic-medical",
+          "community_id": "clinic-district",
+          "service_type": "medical",
+          "weighted_service_person_minutes": 600,
+          "total_weighted_service_person_minutes": 800,
+          "coverage_parts_per_million": 750000
+        },
+        {
+          "demand_id": "shelter-air",
+          "community_id": "deep-shelter",
+          "service_type": "air",
+          "weighted_service_person_minutes": 480,
+          "total_weighted_service_person_minutes": 480,
+          "coverage_parts_per_million": 1000000
+        }
+      ]
+    },
+    "baseline_comparisons": [
+      {
+        "baseline": "no_intervention",
+        "plan": {
+          "plan_id": "[]",
+          "interventions": [],
+          "idle_resource_ids": [
+            "mobile-generator"
+          ],
+          "objective": {
+            "weighted_service_person_minutes": 720,
+            "minimum_community_service_coverage_ppm": 250000,
+            "deployment_minutes": 0,
+            "intervention_count": 0
+          },
+          "demand_metrics": [
+            {
+              "demand_id": "shelter-air",
+              "community_id": "deep-shelter",
+              "service_type": "air",
+              "population": 40,
+              "served_minutes": 1,
+              "service_person_minutes": 40,
+              "total_service_person_minutes": 160,
+              "coverage_parts_per_million": 250000,
+              "priority_weight": 3,
+              "weighted_service_person_minutes": 120
+            },
+            {
+              "demand_id": "clinic-medical",
+              "community_id": "clinic-district",
+              "service_type": "medical",
+              "population": 20,
+              "served_minutes": 3,
+              "service_person_minutes": 60,
+              "total_service_person_minutes": 80,
+              "coverage_parts_per_million": 750000,
+              "priority_weight": 10,
+              "weighted_service_person_minutes": 600
+            }
+          ],
+          "community_service_coverages": [
+            {
+              "demand_id": "clinic-medical",
+              "community_id": "clinic-district",
+              "service_type": "medical",
+              "weighted_service_person_minutes": 600,
+              "total_weighted_service_person_minutes": 800,
+              "coverage_parts_per_million": 750000
+            },
+            {
+              "demand_id": "shelter-air",
+              "community_id": "deep-shelter",
+              "service_type": "air",
+              "weighted_service_person_minutes": 120,
+              "total_weighted_service_person_minutes": 480,
+              "coverage_parts_per_million": 250000
+            }
+          ]
+        },
+        "primary_score_delta": 360,
+        "minimum_community_service_coverage_delta_ppm": 500000
+      },
+      {
+        "baseline": "static_priority",
+        "plan": {
+          "plan_id": "[[\"mobile-generator\",\"clinic\",\"clinic-power\"]]",
+          "interventions": [
+            {
+              "id": "assignment:[\"mobile-generator\",\"clinic\",\"clinic-power\"]",
+              "resource_id": "mobile-generator",
+              "target_asset_id": "clinic",
+              "dependency_group_id": "clinic-power",
+              "dispatch_minute": 0,
+              "duration_minutes": null
+            }
+          ],
+          "idle_resource_ids": [],
+          "objective": {
+            "weighted_service_person_minutes": 920,
+            "minimum_community_service_coverage_ppm": 250000,
+            "deployment_minutes": 0,
+            "intervention_count": 1
+          },
+          "demand_metrics": [
+            {
+              "demand_id": "shelter-air",
+              "community_id": "deep-shelter",
+              "service_type": "air",
+              "population": 40,
+              "served_minutes": 1,
+              "service_person_minutes": 40,
+              "total_service_person_minutes": 160,
+              "coverage_parts_per_million": 250000,
+              "priority_weight": 3,
+              "weighted_service_person_minutes": 120
+            },
+            {
+              "demand_id": "clinic-medical",
+              "community_id": "clinic-district",
+              "service_type": "medical",
+              "population": 20,
+              "served_minutes": 4,
+              "service_person_minutes": 80,
+              "total_service_person_minutes": 80,
+              "coverage_parts_per_million": 1000000,
+              "priority_weight": 10,
+              "weighted_service_person_minutes": 800
+            }
+          ],
+          "community_service_coverages": [
+            {
+              "demand_id": "clinic-medical",
+              "community_id": "clinic-district",
+              "service_type": "medical",
+              "weighted_service_person_minutes": 800,
+              "total_weighted_service_person_minutes": 800,
+              "coverage_parts_per_million": 1000000
+            },
+            {
+              "demand_id": "shelter-air",
+              "community_id": "deep-shelter",
+              "service_type": "air",
+              "weighted_service_person_minutes": 120,
+              "total_weighted_service_person_minutes": 480,
+              "coverage_parts_per_million": 250000
+            }
+          ]
+        },
+        "primary_score_delta": 160,
+        "minimum_community_service_coverage_delta_ppm": 500000
+      },
+      {
+        "baseline": "greedy",
+        "plan": {
+          "plan_id": "[[\"mobile-generator\",\"deep-pump\",\"pump-power\"]]",
+          "interventions": [
+            {
+              "id": "assignment:[\"mobile-generator\",\"deep-pump\",\"pump-power\"]",
+              "resource_id": "mobile-generator",
+              "target_asset_id": "deep-pump",
+              "dependency_group_id": "pump-power",
+              "dispatch_minute": 0,
+              "duration_minutes": null
+            }
+          ],
+          "idle_resource_ids": [],
+          "objective": {
+            "weighted_service_person_minutes": 1080,
+            "minimum_community_service_coverage_ppm": 750000,
+            "deployment_minutes": 0,
+            "intervention_count": 1
+          },
+          "demand_metrics": [
+            {
+              "demand_id": "shelter-air",
+              "community_id": "deep-shelter",
+              "service_type": "air",
+              "population": 40,
+              "served_minutes": 4,
+              "service_person_minutes": 160,
+              "total_service_person_minutes": 160,
+              "coverage_parts_per_million": 1000000,
+              "priority_weight": 3,
+              "weighted_service_person_minutes": 480
+            },
+            {
+              "demand_id": "clinic-medical",
+              "community_id": "clinic-district",
+              "service_type": "medical",
+              "population": 20,
+              "served_minutes": 3,
+              "service_person_minutes": 60,
+              "total_service_person_minutes": 80,
+              "coverage_parts_per_million": 750000,
+              "priority_weight": 10,
+              "weighted_service_person_minutes": 600
+            }
+          ],
+          "community_service_coverages": [
+            {
+              "demand_id": "clinic-medical",
+              "community_id": "clinic-district",
+              "service_type": "medical",
+              "weighted_service_person_minutes": 600,
+              "total_weighted_service_person_minutes": 800,
+              "coverage_parts_per_million": 750000
+            },
+            {
+              "demand_id": "shelter-air",
+              "community_id": "deep-shelter",
+              "service_type": "air",
+              "weighted_service_person_minutes": 480,
+              "total_weighted_service_person_minutes": 480,
+              "coverage_parts_per_million": 1000000
+            }
+          ]
+        },
+        "primary_score_delta": 0,
+        "minimum_community_service_coverage_delta_ppm": 0
+      }
+    ],
+    "computation_time_ns": 446958
+  },
+  "coordination_certificate": {
+    "version": "coordination-certificate-v1",
+    "scenario_id": "hollow-feeder-cascade",
+    "scenario_sha256": "6deaa19ef5a849636c76f4e380227d4961eb69f93273497028acf6965724409b",
+    "actions": [
+      {
+        "intervention_id": "assignment:[\"mobile-generator\",\"deep-pump\",\"pump-power\"]",
+        "resource_id": "mobile-generator",
+        "target_asset_id": "deep-pump",
+        "dependency_group_id": "pump-power"
+      }
+    ],
+    "plan_score": 1080,
+    "empty_score": 720,
+    "kind": "single_action",
+    "joint_gain": 0,
+    "joint_gain_share_ppm": 0,
+    "subset_scores": [
+      {
+        "intervention_ids": [],
+        "weighted_service_person_minutes": 720,
+        "served": [
+          {
+            "demand_id": "clinic-medical",
+            "served_minutes": 3
+          },
+          {
+            "demand_id": "shelter-air",
+            "served_minutes": 1
+          }
+        ],
+        "availability": [
+          {
+            "asset_id": "air-scrubber",
+            "service_available": [
+              true,
+              false,
+              false,
+              false,
+              false
+            ]
+          },
+          {
+            "asset_id": "clinic",
+            "service_available": [
+              true,
+              true,
+              true,
+              false,
+              false
+            ]
+          },
+          {
+            "asset_id": "deep-pump",
+            "service_available": [
+              true,
+              false,
+              false,
+              false,
+              false
+            ]
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": [
+              false,
+              false,
+              false,
+              false,
+              false
+            ]
+          },
+          {
+            "asset_id": "raw-water",
+            "service_available": [
+              true,
+              true,
+              true,
+              true,
+              true
+            ]
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": [
+              true,
+              true,
+              true,
+              true,
+              false
+            ]
+          }
+        ]
+      },
+      {
+        "intervention_ids": [
+          "assignment:[\"mobile-generator\",\"deep-pump\",\"pump-power\"]"
+        ],
+        "weighted_service_person_minutes": 1080,
+        "served": [
+          {
+            "demand_id": "clinic-medical",
+            "served_minutes": 3
+          },
+          {
+            "demand_id": "shelter-air",
+            "served_minutes": 4
+          }
+        ],
+        "availability": [
+          {
+            "asset_id": "air-scrubber",
+            "service_available": [
+              true,
+              true,
+              true,
+              true,
+              false
+            ]
+          },
+          {
+            "asset_id": "clinic",
+            "service_available": [
+              true,
+              true,
+              true,
+              false,
+              false
+            ]
+          },
+          {
+            "asset_id": "deep-pump",
+            "service_available": [
+              true,
+              true,
+              true,
+              true,
+              true
+            ]
+          },
+          {
+            "asset_id": "feeder",
+            "service_available": [
+              false,
+              false,
+              false,
+              false,
+              false
+            ]
+          },
+          {
+            "asset_id": "raw-water",
+            "service_available": [
+              true,
+              true,
+              true,
+              true,
+              true
+            ]
+          },
+          {
+            "asset_id": "scrubber-battery",
+            "service_available": [
+              true,
+              true,
+              true,
+              true,
+              false
+            ]
+          }
+        ]
+      }
+    ],
+    "necessity": [
+      {
+        "intervention_id": "assignment:[\"mobile-generator\",\"deep-pump\",\"pump-power\"]",
+        "score_without": 720,
+        "loss_without": 360,
+        "necessary": true
+      }
+    ],
+    "full_recovery_minimal_sets": [
+      [
+        "assignment:[\"mobile-generator\",\"deep-pump\",\"pump-power\"]"
+      ]
+    ],
+    "demand_sufficiency": [
+      {
+        "demand_id": "clinic-medical",
+        "required_served_minutes": 3,
+        "minimal_sets": [
+          []
+        ]
+      },
+      {
+        "demand_id": "shelter-air",
+        "required_served_minutes": 4,
+        "minimal_sets": [
+          [
+            "assignment:[\"mobile-generator\",\"deep-pump\",\"pump-power\"]"
+          ]
+        ]
+      }
+    ],
+    "greedy": {
+      "steps": [
+        {
+          "intervention_id": "assignment:[\"mobile-generator\",\"deep-pump\",\"pump-power\"]",
+          "score_after": 1080,
+          "marginal_gain": 360
+        }
+      ],
+      "final_score": 1080,
+      "shortfall_versus_plan": 0,
+      "trap_detected": false
+    },
+    "limitations": {
+      "statements": [
+        "Claims hold inside the declared deterministic LIFELINE model only.",
+        "Minimal sets are minimal within the recommended actions, not across all possible plans.",
+        "Joint gain of a set larger than two is its Harsanyi dividend, not a pairwise effect.",
+        "The digest shows integrity, not authorship or a trusted timestamp.",
+        "Scores are weighted service-person-minutes, not people helped or lives saved.",
+        "Builder and verifier share the simulator and claim formulas; these checks establish replay consistency, not fully independent verification.",
+        "Matching the plan means matching its served-minute totals, not full recovery or the same timing for every demand."
+      ]
+    },
+    "certificate_sha256": "e2fab29e25b1dc0192c02e685f01679eeddee22d65c389477d82ad287379ef91"
+  },
+  "coordination_verification": {
+    "status": "passed",
+    "checks": [
+      {
+        "name": "schema",
+        "passed": true,
+        "detail": "certificate matches the versioned schema"
+      },
+      {
+        "name": "payload_integrity",
+        "passed": true,
+        "detail": "recorded SHA-256 matches the canonical certificate body"
+      },
+      {
+        "name": "scenario_binding",
+        "passed": true,
+        "detail": "certificate was made for exactly these scenario inputs"
+      },
+      {
+        "name": "actions_valid",
+        "passed": true,
+        "detail": "every action is a feasible one-shot assignment"
+      },
+      {
+        "name": "subset_replay",
+        "passed": true,
+        "detail": "replayed 2 action subsets with the simulator"
+      },
+      {
+        "name": "joint_gain",
+        "passed": true,
+        "detail": "joint gain and plan score recomputed from the replays"
+      },
+      {
+        "name": "necessity",
+        "passed": true,
+        "detail": "each action was removed and the plan replayed"
+      },
+      {
+        "name": "minimal_sufficiency",
+        "passed": true,
+        "detail": "minimal sufficient subsets recomputed by exhaustive subset search"
+      },
+      {
+        "name": "greedy_witness",
+        "passed": true,
+        "detail": "greedy policy replayed step by step on the same simulator"
+      },
+      {
+        "name": "claim_scope",
+        "passed": true,
+        "detail": "scope and shared-formula limitations match this certificate version"
+      }
+    ]
+  }
+}

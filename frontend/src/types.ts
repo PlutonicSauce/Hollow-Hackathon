@@ -163,6 +163,8 @@ export type Evaluation = {
   };
   optimization: OptimizationResult;
   receipt: Receipt;
+  coordination_certificate?: CoordinationCertificate;
+  coordination_verification?: CertificateVerification;
   traces: Record<string, TimeStep[]>;
 };
 
@@ -184,4 +186,33 @@ export type ScenarioChoice = {
   key: string;
   name: string;
   description: string;
+};
+
+export type CoordinationCertificate = {
+  version: "coordination-certificate-v1";
+  scenario_id: string;
+  scenario_sha256: string;
+  actions: Array<{ intervention_id: string; resource_id: string; target_asset_id: string; dependency_group_id: string }>;
+  plan_score: number;
+  empty_score: number;
+  kind: "no_actions" | "single_action" | "complementary" | "additive" | "overlapping" | "higher_order";
+  joint_gain: number;
+  joint_gain_share_ppm: number;
+  subset_scores: Array<{
+    intervention_ids: string[];
+    weighted_service_person_minutes: number;
+    served: Array<{ demand_id: string; served_minutes: number }>;
+    availability: Array<{ asset_id: string; service_available: boolean[] }>;
+  }>;
+  necessity: Array<{ intervention_id: string; score_without: number; loss_without: number; necessary: boolean }>;
+  full_recovery_minimal_sets: string[][];
+  demand_sufficiency: Array<{ demand_id: string; required_served_minutes: number; minimal_sets: string[][] }>;
+  greedy: { steps: Array<{ intervention_id: string; score_after: number; marginal_gain: number }>; final_score: number; shortfall_versus_plan: number; trap_detected: boolean };
+  limitations: { statements: string[] };
+  certificate_sha256: string;
+};
+
+export type CertificateVerification = {
+  status: "passed" | "failed";
+  checks: Array<{ name: string; passed: boolean; detail: string }>;
 };
