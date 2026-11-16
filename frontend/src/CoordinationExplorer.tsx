@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { CoordinationCertificate, Evaluation } from "./types";
+import { CommunityExperiment } from "./CommunityExperiment";
 import { CoordinationNetwork } from "./CoordinationNetwork";
 import "./coordination.css";
 
@@ -13,7 +14,7 @@ export function CoordinationExplorer({ evaluation, certificate, stale }: {
   const scenario = evaluation.scenario;
   const ids = certificate.actions.map((action) => action.intervention_id);
   const [selected, setSelected] = useState(ids);
-  const [minute, setMinute] = useState(0);
+  const [minute, setMinute] = useState(1);
   const [playing, setPlaying] = useState(false);
   const [comparison, setComparison] = useState("subsets");
   const choose = (subset: string[]) => { setSelected(subset); setComparison("subsets"); setPlaying(false); };
@@ -41,8 +42,6 @@ export function CoordinationExplorer({ evaluation, certificate, stale }: {
   const isolated = certificate.actions.length === 2 && certificate.kind === "complementary" &&
     certificate.subset_scores.filter((item) => item.intervention_ids.length === 1)
       .every((item) => item.weighted_service_person_minutes <= certificate.empty_score);
-  const fullRow = certificate.subset_scores.find((item) => item.intervention_ids.length === ids.length);
-  const recoveryMinute = Array.from({length:scenario.horizon_minutes}, (_, minute) => minute).find((minute) => scenario.demands.length > 0 && scenario.demands.every((demand) => fullRow?.availability.find((item) => item.asset_id === demand.served_by_asset_id)?.service_available[minute] === true));
   const report = evaluation.coordination_verification;
   const checked = report?.status === "passed" && report.checks.length > 0 && report.checks.every((check) => check.passed);
   const greedyPlan = evaluation.optimization.baseline_comparisons.find((item) => item.baseline === "greedy")?.plan;
@@ -61,10 +60,10 @@ export function CoordinationExplorer({ evaluation, certificate, stale }: {
   return (
     <section id="coordination" className="coordination-section" aria-labelledby="coordination-title">
       <header className="coordination-heading">
-        <h1 id="coordination-title">{isolated ? "One crew can’t. Together, they can." : ids.length ? "What does each action contribute?" : "Service without assigned backup"}</h1>
+        <h1 id="coordination-title">{isolated ? "Water and ventilation are down.\nTwo crews can bring them back." : ids.length ? "What does each action contribute?" : "Service without assigned backup"}</h1>
         <p>{isolated
-          ? `Neither crew can restore the shared pump alone. Together they score ${number(certificate.plan_score)}. ${recoveryMinute !== undefined ? `${[...new Set(scenario.demands.map((demand) => demand.service_type))].join(" and ").replace(/^./, (char) => char.toUpperCase())} services return at minute ${recoveryMinute} in this model.` : "Try either crew, then both."}`
-          : "Explore subsets of the recommended response. Every outcome below comes from a Python simulator replay, using the same scenario inputs."}</p>
+          ? "For this underground community, a shared pump needs power and water. Neither crew can restore its services alone. Try switching either crew off."
+          : "Choose a response and see which community services remain available. These are recorded outcomes from the Python model."}</p>
       </header>
       {!checked && <p role="alert" className="coord-stale">Certificate replay checks failed or were not supplied. Exploration is disabled; recompute before relying on these claims.</p>}
       {stale && <p className="coord-stale" role="status">Inputs have changed. This evidence belongs to the previous run. Confirm and recompute to explore the new response.</p>}
@@ -89,7 +88,7 @@ export function CoordinationExplorer({ evaluation, certificate, stale }: {
             })}
             {!ids.length && <p>No response resource is assigned in this plan. The timeline still includes natural fault endings and reserves.</p>}
           </fieldset>
-          <details className="coord-outcomes" open={ids.length <= 2}>
+          <details className="coord-outcomes">
             <summary>{certificate.subset_scores.length} replayed outcomes</summary>
             <div aria-label="Replayed action subsets">
               {certificate.subset_scores.map((subset) => {
@@ -101,28 +100,23 @@ export function CoordinationExplorer({ evaluation, certificate, stale }: {
               })}
             </div>
           </details>
-          <details className="coord-comparisons"><summary>Compare other responses</summary><h3>Why the simpler response misses it</h3>
-            <p>Same crews. Different assignments.</p>
-            {evaluation.optimization.baseline_comparisons.filter((item) => item.baseline !== "no_intervention").map((item) =>
-              <button type="button" key={item.baseline} disabled={stale || !checked || !evaluation.traces}
-                aria-pressed={comparison === item.baseline} onClick={() => {setComparison(item.baseline); setPlaying(false);}}>
-                <span>{item.baseline === "greedy" ? "Greedy response" : "Static priority"}</span><strong>{number(item.plan.objective.weighted_service_person_minutes)}</strong>
-              </button>)}
-            <p className="coord-comparison-note">{comparison === "greedy" ? "Greedy adds the best immediate gain, one crew at a time." : comparison === "static_priority" ? "Static priority favors direct demand at each destination." : evaluation.optimization.exhaustive_search_complete ? "The recommended plan checks every feasible assignment in this supported search." : "Search incomplete. No optimality claim is established."}</p>
-          </details>
           <a className="coord-audit-link" href="#decision-audit">Can I check this result? →</a>
         </div>
         <div className="coord-outcome">
           <div className="coord-view-heading"><span>{recommendedSelected ? "Recommended response" : "Exploring a counterfactual"}</span><strong>{shownName}</strong></div>
-          <CoordinationNetwork scenario={scenario} availability={shownRow?.availability} minute={minute} selectedActions={selectedActions}
-            actions={comparison === "subsets" ? evaluation.optimization.selected_plan.interventions : baseline?.plan.interventions ?? []} />
+          {comparison !== "subsets" && <p className="experiment-scope">Different assignment: {baseline?.plan.interventions.map((action) => `${scenario.resources.find((resource) => resource.id === action.resource_id)?.name} → ${assetName(action.target_asset_id)}`).join("; ") || "No crew assigned"}.</p>}
+          <CommunityExperiment scenario={scenario} availability={shownRow?.availability} minute={minute}
+            actions={comparison === "subsets" ? evaluation.optimization.selected_plan.interventions.filter((action) => selectedActions.includes(action.id)) : baseline?.plan.interventions ?? []} />
           <div className="coord-replay">
-            <button type="button" disabled={stale || !checked || !shownRow} onClick={() => {if (minute >= scenario.horizon_minutes) setMinute(0); setPlaying(!playing);}}>{playing ? "Pause recovery" : "Watch recovery"}</button>
+            <button type="button" disabled={stale || !checked || !shownRow} onClick={() => {if (!playing) setMinute(0); setPlaying(!playing);}}>{playing ? "Pause recovery" : "Watch recovery"}</button>
             <label>Minute {minute} of {scenario.horizon_minutes}<input type="range" min="0" max={scenario.horizon_minutes} value={minute} disabled={stale || !checked} aria-label="Counterfactual minute" onChange={(event) => {setMinute(Number(event.target.value)); setPlaying(false);}} /></label>
             <button type="button" disabled={stale || !checked} onClick={() => {setMinute(0);setPlaying(false);}}>Reset</button>
           </div>
           <p className="coord-observed">{scenario.demands.filter((demand) => shownRow?.availability.find((item) => item.asset_id === demand.served_by_asset_id)?.service_available[minute] === true).length} of {scenario.demands.length} community services available at minute {minute}</p>
           <p className="coord-phase">{minute === 0 ? "Initial state · Includes any backup arriving at minute 0" : minute === scenario.horizon_minutes ? "End boundary · Not an additional service minute" : selectedActions.length ? "Response underway · Recorded simulator state" : "Without response · Recorded simulator state"}</p>
+          <details className="recovery-detail"><summary>Explore the network and full recovery</summary>
+          <CoordinationNetwork scenario={scenario} availability={shownRow?.availability} minute={minute} selectedActions={selectedActions}
+            actions={comparison === "subsets" ? evaluation.optimization.selected_plan.interventions : baseline?.plan.interventions ?? []} />
           <div className="coord-results">
 
           <div role="status" aria-live="polite" aria-atomic="true" className="coord-score">
@@ -144,8 +138,18 @@ export function CoordinationExplorer({ evaluation, certificate, stale }: {
           <div className="coord-time-key"><span>Minute 0</span><span>Minute {scenario.horizon_minutes}</span></div>
           <p className="coord-explainer">Solid segments: available. Hatched segments: unavailable. Each segment is one modeled minute. The final boundary adds no service time.</p>
           <p className="coord-explainer">Temporary backup supplies missing inputs; it does not repair physical faults. These toggles explore this response’s actions, not every possible assignment.</p>
+          </details>
         </div>
       </div>
+          <details className="coord-comparisons"><summary>Compare other responses</summary><h3>Why the simpler response misses it</h3>
+            <p>Same crews. Different assignments. The recommended response scores {number(certificate.plan_score)} priority-weighted service-person-minutes.{certificate.plan_score > certificate.greedy.final_score && certificate.greedy.final_score > 0 ? ` That is ${Math.round((certificate.plan_score / certificate.greedy.final_score - 1) * 100)}% higher than greedy.` : ""}</p>
+            {evaluation.optimization.baseline_comparisons.filter((item) => item.baseline !== "no_intervention").map((item) =>
+              <button type="button" key={item.baseline} disabled={stale || !checked || !evaluation.traces}
+                aria-pressed={comparison === item.baseline} onClick={() => {setComparison(item.baseline); setPlaying(false);}}>
+                <span>{item.baseline === "greedy" ? "Greedy response" : "Static priority"}</span><strong>{number(item.plan.objective.weighted_service_person_minutes)}</strong>
+              </button>)}
+            <p className="coord-comparison-note">{comparison === "greedy" ? "Greedy adds the best immediate gain, one crew at a time." : comparison === "static_priority" ? "Static priority favors direct demand at each destination." : evaluation.optimization.exhaustive_search_complete ? "The recommended plan checks every feasible assignment in this supported search." : "Search incomplete. No optimality claim is established."}</p>
+          </details>
       <details className="coord-technical"><summary>Understand the coordination evidence</summary>
       <p className="coord-definition">The service score adds population × available minutes × priority weight across demand records. The same community may need multiple services. This is a synthetic model score, not a count of people saved or evidence of real-world emergency safety.</p>
       <div className="coord-claims">

@@ -197,3 +197,60 @@
 .audit-method summary { min-height: 44px; padding: 10px 0; font-size: 14px; }
 .coord-phase { margin-bottom: 10px; }
 .discovery-caption { margin-bottom: 0; }
+/* Judge-first experiment: inputs and community consequences before engineering. */
+.discovery-app:has(.pump-experiment) .incident-context { display: none; }
+.coordination-heading h1 { white-space: pre-line; font-size: clamp(34px,3.4vw,48px); max-width: 980px; }
+.coordination-heading p { max-width: 700px; font-size: 18px; }
+.coord-explorer { grid-template-columns: 260px minmax(0,1fr); gap: 48px; }
+.coord-choices { border: 0; padding-top: 16px; }
+.coord-switch { background: white; border: 1px solid var(--border); padding: 20px 14px; }
+.coord-switch.is-included { border-color: #638476; background: #edf3ed; }
+.coord-switch span span { font-size: 14px; }
+.coord-outcomes { margin-top: 16px; }
+.coord-view-heading { border-bottom: 1px solid var(--border); padding: 12px 0 18px; }
+.community-experiment { padding: 26px 0 8px; }
+.pump-experiment { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 48px; }
+.pump-inputs { display: grid; gap: 26px; }
+.pump-inputs > div { position: relative; padding: 4px 0 4px 18px; border-left: 4px solid #aa8b76; }
+.pump-inputs > div::after { content: ""; position: absolute; left: 100%; top: 50%; width: 48px; border-top: 2px dashed #a4afa7; }
+.pump-inputs .input-present { border-color: #397258; }
+.pump-inputs .input-present::after { border-top-style: solid; border-color: #397258; }
+.pump-inputs strong { display: block; font-size: 22px; }
+.pump-inputs span { display: block; font-size: 15px; color: var(--muted); margin-top: 5px; }
+.shared-pump { border-radius: 50% 50% 22px 22px; background: #e9e8e1; text-align: center; padding: 26px 18px; min-height: 200px; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+.shared-pump > span { font-size: 26px; }
+.shared-pump h2 { font-size: 25px; }
+.shared-pump > strong { font-size: 15px; }
+.shared-pump p { font-size: 15px; color: var(--muted); }
+.shared-pump.pump-running { background: #deecdf; }
+.community-services { display: flex; flex-wrap: wrap; gap: 28px; border-top: 1px solid var(--border); margin-top: 26px; padding-top: 24px; }
+.community-services > div { display: flex; flex: 1; min-width: 200px; gap: 14px; }
+.community-service-symbol { font-size: 28px; color: #856956; }
+.community-served .community-service-symbol { color: var(--healthy); }
+.community-services h3 { font-size: 23px; margin-bottom: 5px; }
+.community-services strong { font-size: 17px; }
+.community-services p { font-size: 14px; color: var(--muted); margin-top: 5px; }
+.experiment-scope { margin-top: 20px; color: var(--muted); font-size: 13px; }
+.coord-observed { font-size: 14px; }
+.recovery-detail { margin-top: 20px; }
+.recovery-detail > summary { min-height: 48px; padding: 14px 0; font-size: 16px; }
+.coord-comparisons { border-top: 1px solid var(--border); margin-top: 30px; padding-top: 10px; }
+.coord-comparisons > summary { font-size: 19px; }
+.coord-comparisons button { max-width: 600px; font-size: 16px; }
+.coord-comparisons p { font-size: 15px; max-width: 700px; }
+.coord-technical > summary { font-size: 17px; }
+.coord-technical { margin-top: 14px; }
+@media(max-width:1000px) { .coord-explorer { grid-template-columns: 210px minmax(0,1fr); gap: 24px; } .pump-experiment { gap: 24px; } .pump-inputs > div::after { width: 24px; } .shared-pump { padding: 20px 10px; } }
+@media(max-width:600px) {
+ .coord-explorer { display: flex; gap: 18px; }
+ .coordination-heading h1 { font-size: 36px; }
+ .coordination-heading p { font-size: 17px; }
+ .coord-switch { padding: 14px; }
+ .coord-switch span span { font-size: 13px; }
+ .coord-outcomes { margin-top: 8px; }
+ .pump-inputs strong { font-size: 19px; } .pump-inputs span { font-size: 14px; }
+ .shared-pump h2 { font-size: 21px; } .shared-pump { min-height: 190px; }
+ .community-services { gap: 22px; } .community-services > div { min-width: 140px; gap: 8px; }
+ .community-services h3 { font-size: 21px; } .community-services p { font-size: 13px; }
+}
+@media(prefers-reduced-motion:no-preference) { .shared-pump { transition: background .18s ease; } }
